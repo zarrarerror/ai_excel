@@ -9,17 +9,17 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Shayntech Excel AI Pro"/>
   <Description DefaultValue="AI-powered Excel agent — Pro subscription version"/>
-  <IconUrl DefaultValue="https://excel-ai-pro-backend.replit.app/icon.png"/>
-  <HighResolutionIconUrl DefaultValue="https://excel-ai-pro-backend.replit.app/icon.png"/>
+  <IconUrl DefaultValue="https://aiexcel.replit.app/icon.png"/>
+  <HighResolutionIconUrl DefaultValue="https://aiexcel.replit.app/icon.png"/>
   <SupportUrl DefaultValue="https://shayntech.com"/>
   <AppDomains>
-    <AppDomain>https://excel-ai-pro-backend.replit.app</AppDomain>
+    <AppDomain>https://aiexcel.replit.app</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Workbook"/>
   </Hosts>
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://excel-ai-pro-backend.replit.app/taskpane.html"/>
+    <SourceLocation DefaultValue="https://aiexcel.replit.app/taskpane.html"/>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
 </OfficeApp>
