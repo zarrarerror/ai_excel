@@ -1,0 +1,4816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Shayntech Excel AI Pro</title>
+
+<!-- Office.js SDK -->
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" type="text/javascript"></script>
+
+<!-- PDF.js for PDF reading -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<!-- SheetJS for XLSX reading -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- Google Font: Syne + DM Sans -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+<style>
+  :root {
+    --bg:       #0d0f14;
+    --bg2:      #14171f;
+    --bg3:      #1c2030;
+    --border:   #2a2f42;
+    --accent:   #00e5a0;
+    --accent2:  #0099ff;
+    --danger:   #ff4d6d;
+    --text:     #e8eaf0;
+    --muted:    #6b7280;
+    --user-bg:  #1a2a1f;
+    --ai-bg:    #141824;
+    --radius:   12px;
+    --font-hd:  'Syne', sans-serif;
+    --font-body:'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-size: 13px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+  .brand-name {
+    font-family: var(--font-hd);
+    font-size: 16px;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .brand-tag {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+  .status-dot.ready  { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .status-dot.busy   { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); animation: pulse 1s infinite; }
+  .status-dot.error  { background: var(--danger); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    padding: 7px 4px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+    user-select: none;
+  }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  .tab-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .tab-panel.active { display: flex; }
+
+  /* ── Chat Panel ── */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-behavior: smooth;
+  }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: fadeUp 0.2s ease;
+  }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+  .msg-label {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0 4px;
+  }
+  .msg.user .msg-label  { color: var(--accent); }
+  .msg.agent .msg-label { color: var(--accent2); }
+  .msg.system .msg-label { color: var(--muted); }
+  .msg.error .msg-label  { color: var(--danger); }
+
+  .msg-bubble {
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 12.5px;
+  }
+  .msg.user .msg-bubble {
+    background: var(--user-bg);
+    border: 1px solid #1e3a28;
+    border-left: 2px solid var(--accent);
+    align-self: flex-end;
+    max-width: 95%;
+  }
+  .msg.agent .msg-bubble {
+    background: var(--ai-bg);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent2);
+  }
+  .msg.system .msg-bubble {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    font-style: italic;
+  }
+  .msg.error .msg-bubble {
+    background: #1f0a0e;
+    border: 1px solid #3d1520;
+    border-left: 2px solid var(--danger);
+    color: #ff8fa0;
+  }
+  .chat-toolbar {
+    display: flex;
+    gap: 6px;
+    padding-bottom: 4px;
+  }
+  .chat-tool-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .chat-tool-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  .msg-copy-btn {
+    display: none;
+    position: absolute;
+    top: 6px; right: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .msg-copy-btn:hover { color: var(--accent); }
+  .msg.agent:hover .msg-copy-btn,
+  .msg.system:hover .msg-copy-btn { display: block; }
+  .msg.agent .msg-bubble,
+  .msg.system .msg-bubble { position: relative; }
+  .msg-wrap { position: relative; }
+
+  .msg.tool-call .msg-bubble {
+    background: #0d1a2a;
+    border: 1px solid #1a2f4a;
+    border-left: 2px solid var(--accent2);
+    color: #7ab8ff;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+  }
+
+  /* Typing indicator */
+  .typing {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    padding: 9px 12px;
+    background: var(--ai-bg);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent2);
+    border-radius: var(--radius);
+    width: fit-content;
+  }
+  .typing.show { display: flex; }
+  .typing span {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
+  /* ── Input area ── */
+  .input-area {
+    border-top: 1px solid var(--border);
+    padding: 8px 10px 10px;
+    background: var(--bg);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* File attachment preview */
+  .attached-file {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .attached-file.show { display: flex; }
+  .attached-file .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+  .attached-file .remove-file {
+    cursor: pointer; color: var(--danger); font-size: 13px;
+    padding: 0 2px; line-height: 1; background: none; border: none;
+    flex-shrink: 0;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+  }
+  .input-btns {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  textarea#user-input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    padding: 8px 10px;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    min-height: 56px;
+    max-height: 130px;
+    transition: border-color 0.2s;
+  }
+  textarea#user-input:focus { border-color: var(--accent); }
+  textarea#user-input::placeholder { color: var(--muted); }
+
+  .icon-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .send-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #000;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+  .send-btn:hover:not(:disabled) { background: #00ffb3; }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; background: var(--muted); }
+
+  /* Hidden file input */
+  #file-input { display: none; }
+
+  /* ── Settings Panel ── */
+  .settings-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .settings-panel::-webkit-scrollbar { width: 4px; }
+  .settings-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .settings-title {
+    font-family: var(--font-hd);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field label {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .field input, .field select, .field textarea {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 12px;
+    padding: 7px 10px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+  .field input[type="password"] { letter-spacing: 0.05em; }
+  .field select option { background: var(--bg2); }
+  .field .hint { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .provider-tabs {
+    display: flex;
+    gap: 4px;
+  }
+  .ptab {
+    flex: 1;
+    padding: 6px 4px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .ptab.active { color: #000; background: var(--accent); border-color: var(--accent); }
+  .ptab:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+  .provider-config { display: none; }
+  .provider-config.active { display: flex; flex-direction: column; gap: 8px; }
+
+  .save-btn {
+    padding: 9px 16px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .save-btn:hover { background: #00ffb3; }
+
+  .test-btn {
+    padding: 9px 16px;
+    background: transparent;
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .test-btn:hover { background: #0a1a2a; }
+
+  .btn-row { display: flex; gap: 6px; }
+
+  /* ── About Panel ── */
+  .about-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .about-logo {
+    font-family: var(--font-hd);
+    font-size: 22px;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .about-sub { font-size: 11px; color: var(--muted); margin-top: -8px; }
+  .about-desc { font-size: 12px; color: var(--text); line-height: 1.7; }
+  .capability-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .cap-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--bg3);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .cap-icon { flex-shrink: 0; font-size: 13px; }
+  .version-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 2px 0;
+  }
+
+  /* ── Theme Selector ── */
+  .theme-grid {
+    display: flex;
+    gap: 8px;
+  }
+  .theme-card {
+    flex: 1;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+    padding: 10px 8px 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg3);
+  }
+  .theme-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .theme-card.active { border-color: var(--accent); }
+  .theme-swatch {
+    width: 100%;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    gap: 3px;
+    overflow: hidden;
+  }
+  .theme-swatch span {
+    flex: 1;
+    border-radius: 3px;
+  }
+  .theme-card-name {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.04em;
+  }
+  .theme-card.active .theme-card-name { color: var(--accent); }
+
+  /* Notification */
+  .notif {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 11px;
+    color: var(--text);
+    transition: transform 0.3s;
+    z-index: 9999;
+    white-space: nowrap;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .notif.show { transform: translateX(-50%) translateY(0); }
+  .notif.success { border-color: var(--accent); color: var(--accent); }
+  .notif.fail { border-color: var(--danger); color: var(--danger); }
+
+  /* ── Formula Assistant Mode ── */
+  .mode-toggle {
+    display: flex;
+    gap: 3px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+    flex-shrink: 0;
+  }
+  .mode-btn {
+    padding: 3px 10px;
+    border-radius: 5px;
+    border: none;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+  }
+  .mode-btn.active {
+    background: var(--accent);
+    color: #000;
+  }
+  .mode-btn:not(.active):hover { color: var(--text); }
+
+  .formula-bar {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    background: #0d1a14;
+    border: 1px solid #1a3a28;
+    border-radius: 8px;
+    font-size: 11px;
+  }
+  .formula-bar.show { display: flex; }
+  .formula-bar-label { color: var(--muted); flex-shrink: 0; }
+  .formula-bar-value {
+    flex: 1;
+    font-family: 'Courier New', monospace;
+    color: var(--accent);
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .formula-insert-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .formula-insert-btn:hover { background: #00ffb3; }
+
+  /* ── Template Library Modal ── */
+  .tpl-overlay {
+    display: none;
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .tpl-overlay.show { display: flex; pointer-events: all; }
+  .tpl-modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .tpl-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tpl-title {
+    font-family: var(--font-hd);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .tpl-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.15s;
+  }
+  .tpl-close:hover { color: var(--danger); }
+  .tpl-cats {
+    display: flex;
+    gap: 5px;
+    padding: 10px 14px 8px;
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+  .tpl-cats::-webkit-scrollbar { display: none; }
+  .tpl-cat {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    background: var(--bg3);
+  }
+  .tpl-cat.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+  .tpl-cat:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+  .tpl-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 6px 14px 14px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .tpl-grid::-webkit-scrollbar { width: 3px; }
+  .tpl-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .tpl-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tpl-card:hover { border-color: var(--accent); background: #0d1a15; }
+  .tpl-card-icon { font-size: 22px; flex-shrink: 0; }
+  .tpl-card-info { flex: 1; min-width: 0; }
+  .tpl-card-name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .tpl-card-desc { font-size: 10.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .tpl-card-tag {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .tpl-inserting {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    color: var(--accent);
+    font-size: 12px;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+  }
+  .tpl-inserting.show { display: flex; }
+
+/* ── PRO: Login screen ── */
+#login-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; z-index: 10000; padding: 24px;
+}
+#login-screen.hidden { display: none; }
+.login-logo { font-size: 22px; font-weight: 800; color: var(--accent);
+  letter-spacing: -0.5px; margin-bottom: 4px; }
+.login-tagline { font-size: 11px; color: var(--muted); margin-bottom: 28px; text-align:center; }
+.login-box { background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px; width: 100%; max-width: 320px; }
+.login-tab-row { display: flex; gap: 0; margin-bottom: 20px;
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.login-tab { flex: 1; padding: 8px; font-size: 12px; font-weight: 600;
+  cursor: pointer; background: transparent; border: none;
+  color: var(--muted); transition: all 0.2s; }
+.login-tab.active { background: var(--accent); color: #fff; }
+.login-field { margin-bottom: 12px; }
+.login-field label { display: block; font-size: 11px; color: var(--muted);
+  margin-bottom: 4px; font-weight: 500; }
+.login-field input { width: 100%; box-sizing: border-box; padding: 9px 11px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
+  color: var(--text); font-size: 13px; outline: none; }
+.login-field input:focus { border-color: var(--accent); }
+.login-submit { width: 100%; padding: 10px; background: var(--accent);
+  color: #fff; border: none; border-radius: 7px; font-size: 13px;
+  font-weight: 700; cursor: pointer; margin-top: 4px; transition: opacity 0.2s; }
+.login-submit:hover { opacity: 0.85; }
+.login-error { color: #ef4444; font-size: 11px; margin-top: 8px;
+  text-align: center; min-height: 16px; }
+.login-spinner { text-align: center; color: var(--muted); font-size: 12px;
+  margin-top: 8px; }
+
+/* ── PRO: Usage counter in toolbar ── */
+#usage-pill {
+  font-size: 10px; font-weight: 600; padding: 3px 8px;
+  border-radius: 20px; background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+#usage-pill.warning { border-color: #f59e0b; color: #f59e0b; }
+#usage-pill.danger  { border-color: #ef4444; color: #ef4444; }
+#usage-pill.pro     { border-color: #22c55e; color: #22c55e; }
+
+/* ── PRO: Upgrade modal ── */
+#upgrade-modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: none; align-items: center; justify-content: center;
+  z-index: 9999; padding: 20px;
+}
+#upgrade-modal.show { display: flex; }
+.upgrade-card { background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 28px 24px; max-width: 300px; text-align: center; }
+.upgrade-card h2 { font-size: 17px; font-weight: 800; margin: 0 0 8px;
+  color: var(--text); }
+.upgrade-card p { font-size: 12px; color: var(--muted); margin: 0 0 20px;
+  line-height: 1.6; }
+.upgrade-price { font-size: 26px; font-weight: 900; color: var(--accent);
+  margin-bottom: 4px; }
+.upgrade-price span { font-size: 13px; font-weight: 400; color: var(--muted); }
+.upgrade-btn { display: block; width: 100%; padding: 11px;
+  background: var(--accent); color: #fff; border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 16px;
+  text-decoration: none; }
+.upgrade-btn:hover { opacity: 0.85; }
+.upgrade-close { background: transparent; border: none; color: var(--muted);
+  font-size: 11px; cursor: pointer; margin-top: 10px; text-decoration: underline; }
+
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="brand">
+    <span class="brand-name">Shayntech</span>
+    <span class="brand-tag">AI Agent</span>
+  </div>
+  <div id="status-dot" class="status-dot"></div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" data-tab="chat">💬 Chat</div>
+  <div class="tab" data-tab="settings">⚙️ Settings</div>
+  <div class="tab" data-tab="about">ℹ️ About</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  CHAT PANEL                                     -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-chat">
+  <div class="messages" id="messages">
+    <div class="msg system">
+      <span class="msg-label">Shayntech AI</span>
+      <div class="msg-bubble">👋 Hello! I'm your AI Agent for Excel.
+
+I can read your entire workbook, understand your data, and take actions — write formulas, format cells, create charts, add sheets, sort data, and more.
+
+Type a command below, or attach a file (PDF, CSV, XLSX) and tell me what to do with it.
+
+⚡ Configure your AI provider in Settings first.</div>
+    </div>
+    <div class="typing" id="typing-indicator">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <!-- Input area -->
+  <div class="input-area">
+    <div class="attached-file" id="attached-file-preview">
+      <span>📎</span>
+      <span class="file-name" id="attached-file-name"></span>
+      <button class="remove-file" id="remove-file-btn">✕</button>
+    </div>
+    <div class="chat-toolbar" style="justify-content:space-between;align-items:center;">
+      <div style="display:flex;gap:6px;">
+        <button class="chat-tool-btn" id="export-btn" title="Export conversation">💾 Export</button>
+        <button class="chat-tool-btn" id="clear-history-btn" title="Clear chat history">🗑 Clear</button>
+        <button class="chat-tool-btn" id="templates-btn" title="Insert a template" onclick="openTemplates()" style="border-color:var(--accent);color:var(--accent);">📋 Templates</button>
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="mode-agent" onclick="setMode('agent')">🤖 Agent</button>
+        <button class="mode-btn" id="mode-formula" onclick="setMode('formula')">𝑓 Formula</button>
+      </div>
+    </div>
+    <div class="formula-bar" id="formula-bar">
+      <span class="formula-bar-label">𝑓x</span>
+      <span class="formula-bar-value" id="formula-bar-value">—</span>
+      <button class="formula-insert-btn" onclick="insertFormulaToCell()">📥 Insert</button>
+    </div>
+
+    <div class="input-row">
+      <div class="input-btns">
+        <button class="icon-btn" id="attach-btn" title="Attach file (PDF, CSV, XLSX)">📎</button>
+      </div>
+      <textarea id="user-input" placeholder="Ask the agent to do something in Excel..." rows="2"></textarea>
+      <span id="usage-pill" onclick="showUpgradeModal()" title="Click to upgrade">50 free left</span>
+      <button class="icon-btn" id="undo-btn" title="Undo last write" style="border-color:var(--muted); color:var(--muted);" disabled onclick="applyUndo()">↩</button>
+      <button class="icon-btn" id="stop-btn" title="Stop agent" style="display:none; border-color:var(--danger); color:var(--danger);">⏹</button>
+      <button class="send-btn" id="send-btn" title="Send">▶</button>
+    </div>
+    <input type="file" id="file-input" accept=".pdf,.csv,.xlsx,.xls,.txt,.json"/>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  SETTINGS PANEL                                 -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-settings">
+  <div class="settings-panel">
+
+    <div class="settings-section">
+      <div class="settings-title">AI Provider</div>
+      <div class="provider-tabs">
+        <div class="ptab active" data-provider="openrouter">OpenRouter</div>
+        <div class="ptab" data-provider="gemini">Gemini</div>
+        <div class="ptab" data-provider="groq">Groq</div>
+        <div class="ptab" data-provider="claude">Claude</div>
+        <div class="ptab" data-provider="qwen">Qwen</div>
+        <div class="ptab" data-provider="ollama">Ollama</div>
+      </div>
+    </div>
+
+    <!-- OpenRouter config -->
+    <div class="provider-config active" id="cfg-openrouter">
+      <div class="settings-section">
+        <div class="settings-title">OpenRouter</div>
+        <div class="field">
+          <label>API Key</label>
+          <input type="password" id="or-key" placeholder="sk-or-v1-..."/>
+          <div class="hint">Get free key at openrouter.ai → free models: DeepSeek R1, Llama 3.3, Gemma 3</div>
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <select id="or-model">
+            <option value="deepseek/deepseek-r1:free">DeepSeek R1 (Free)</option>
+            <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (Free)</option>
+            <option value="google/gemma-3-27b-it:free">Gemma 3 27B (Free)</option>
+            <option value="mistralai/mistral-small-3.1-24b-instruct:free">Mistral Small 3.1 24B (Free)</option>
+            <option value="microsoft/phi-4-reasoning-plus:free">Phi-4 Reasoning Plus (Free)</option>
+            <option value="openai/gpt-4o">GPT-4o (Paid)</option>
+            <option value="anthropic/claude-3-haiku">Claude 3 Haiku (Paid)</option>
+            <option value="custom">Custom model ID...</option>
+          </select>
+        </div>
+        <div class="field" id="or-custom-field" style="display:none;">
+          <label>Custom Model ID</label>
+          <input type="text" id="or-custom-model" placeholder="provider/model-name"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gemini config -->
+    <div class="provider-config" id="cfg-gemini">
+      <div class="settings-section">
+        <div class="settings-title">Google Gemini</div>
+        <div class="field">
+          <label>API Key</label>
+          <input type="password" id="gm-key" placeholder="AIza..."/>
+          <div class="hint">Get free key at aistudio.google.com → Get API Key (generous free tier)</div>
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <select id="gm-model">
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash (Free, Fast)</option>
+            <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite (Free, Fastest)</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro (Free tier)</option>
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Free tier)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Groq config -->
+    <div class="provider-config" id="cfg-groq">
+      <div class="settings-section">
+        <div class="settings-title">Groq (Ultra-Fast)</div>
+        <div class="field">
+          <label>API Key</label>
+          <input type="password" id="gq-key" placeholder="gsk_..."/>
+          <div class="hint">Free key at console.groq.com — extremely fast inference</div>
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <select id="gq-model">
+            <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Free)</option>
+            <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (Free, Fastest)</option>
+            <option value="mixtral-8x7b-32768">Mixtral 8x7B (Free)</option>
+            <option value="gemma2-9b-it">Gemma 2 9B (Free)</option>
+            <option value="llama3-groq-70b-8192-tool-use-preview">Llama 3 70B Tool Use (Free)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Claude config -->
+    <div class="provider-config" id="cfg-claude">
+      <div class="settings-section">
+        <div class="settings-title">Anthropic Claude</div>
+        <div class="field">
+          <label>API Key</label>
+          <input type="password" id="cl-key" placeholder="sk-ant-..."/>
+          <div class="hint">Get key at console.anthropic.com — best reasoning and instruction following</div>
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <select id="cl-model">
+            <option value="claude-haiku-4-5">Claude Haiku 4.5 (Fast, Affordable)</option>
+            <option value="claude-sonnet-4-5">Claude Sonnet 4.5 (Balanced)</option>
+            <option value="claude-opus-4-5">Claude Opus 4.5 (Most Capable)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Qwen config -->
+    <div class="provider-config" id="cfg-qwen">
+      <div class="settings-section">
+        <div class="settings-title">Qwen / Alibaba</div>
+        <div class="field">
+          <label>API Key</label>
+          <input type="password" id="qw-key" placeholder="sk-..."/>
+          <div class="hint">Get from bailian.console.aliyun.com or your MaaS workspace</div>
+        </div>
+        <div class="field">
+          <label>API Host (optional)</label>
+          <input type="text" id="qw-host" placeholder="https://dashscope.aliyuncs.com"/>
+          <div class="hint">Leave empty for standard DashScope. Paste your openAiCompatible URL for MaaS endpoints (without /chat/completions)</div>
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <select id="qw-model">
+            <option value="qwen-turbo">qwen-turbo (Free tier)</option>
+            <option value="qwen-plus">qwen-plus</option>
+            <option value="qwen-max">qwen-max</option>
+            <option value="qwen2.5-7b-instruct">qwen2.5-7b-instruct</option>
+            <option value="qwen2.5-72b-instruct">qwen2.5-72b-instruct</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ollama config -->
+    <div class="provider-config" id="cfg-ollama">
+      <div class="settings-section">
+        <div class="settings-title">Ollama (Local / Cloud)</div>
+        <div class="field">
+          <label>Ollama Base URL</label>
+          <input type="text" id="ol-url" placeholder="http://localhost:11434" value="http://localhost:11434"/>
+          <div class="hint">For local PC: http://localhost:11434 | For cloud/remote server: use your server IP</div>
+        </div>
+        <div class="field">
+          <label>Model Name</label>
+          <input type="text" id="ol-model" placeholder="llama3.2" value="llama3.2"/>
+          <div class="hint">Run: ollama pull llama3.2 | Other options: mistral, codellama, qwen2.5, phi3</div>
+        </div>
+        <div class="field">
+          <label>API Key (optional)</label>
+          <input type="password" id="ol-key" placeholder="Leave empty for local"/>
+          <div class="hint">Only needed if your Ollama server is behind auth (e.g. ngrok with auth)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="settings-section">
+      <div class="settings-title">Agent Behaviour</div>
+      <div class="field">
+        <label>Max agent loop iterations</label>
+        <select id="max-iter">
+          <option value="5">5 steps</option>
+          <option value="10">10 steps</option>
+          <option value="20" selected>20 steps</option>
+          <option value="30">30 steps</option>
+          <option value="50">50 steps</option>
+          <option value="100">100 steps</option>
+        </select>
+        <div class="hint">How many actions the agent can take in one run before stopping</div>
+      </div>
+      <div class="field">
+        <label>Context rows limit</label>
+        <select id="ctx-rows">
+          <option value="50">50 rows per sheet</option>
+          <option value="100">100 rows per sheet</option>
+          <option value="200">200 rows per sheet</option>
+          <option value="500" selected>500 rows per sheet</option>
+          <option value="1000">1000 rows per sheet</option>
+          <option value="2000">2000 rows per sheet</option>
+        </select>
+        <div class="hint">Limit rows sent to AI to avoid token overflow</div>
+      </div>
+    </div>
+
+    <div class="field" style="padding-top:4px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="require-approval" style="width:16px;height:16px;accent-color:var(--accent);">
+        <span>Require plan approval before execution</span>
+      </label>
+      <div class="hint">Agent shows its plan and waits for your ✅ before running any tools</div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">🎨 Theme</div>
+      <div class="theme-grid" id="theme-grid">
+
+        <div class="theme-card active" id="theme-dark" onclick="applyTheme('dark')">
+          <div class="theme-swatch">
+            <span style="background:#0d0f14"></span>
+            <span style="background:#1c2030"></span>
+            <span style="background:#00e5a0"></span>
+          </div>
+          <div class="theme-card-name">Dark</div>
+        </div>
+
+        <div class="theme-card" id="theme-light" onclick="applyTheme('light')">
+          <div class="theme-swatch">
+            <span style="background:#f0f2f8"></span>
+            <span style="background:#ffffff"></span>
+            <span style="background:#6366f1"></span>
+          </div>
+          <div class="theme-card-name">Light</div>
+        </div>
+
+        <div class="theme-card" id="theme-midnight" onclick="applyTheme('midnight')">
+          <div class="theme-swatch">
+            <span style="background:#070b14"></span>
+            <span style="background:#0f1628"></span>
+            <span style="background:#7c3aed"></span>
+          </div>
+          <div class="theme-card-name">Midnight</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="save-btn" id="save-settings-btn">💾 Save Settings</button>
+      <button class="test-btn" id="test-conn-btn">🔌 Test Connection</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  ABOUT PANEL                                    -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-about">
+  <div class="about-panel">
+    <div>
+      <div class="about-logo">Shayntech</div>
+      <div class="about-sub">AI Agent for Excel &nbsp;·&nbsp; <span class="version-badge">v1.0.0</span></div>
+    </div>
+    <div class="about-desc">A fully agentic AI co-pilot that reads your workbook, understands your data, and autonomously takes action — all from a single chat command.</div>
+
+    <div class="settings-title">Capabilities</div>
+    <div class="capability-list">
+      <div class="cap-item"><span class="cap-icon">📖</span><span>Reads entire workbook — all sheets, values, formulas, structure</span></div>
+      <div class="cap-item"><span class="cap-icon">✍️</span><span>Writes values, sets Excel formulas, pastes data from files</span></div>
+      <div class="cap-item"><span class="cap-icon">🎨</span><span>Formats cells — bold, colors, borders, number formats</span></div>
+      <div class="cap-item"><span class="cap-icon">📊</span><span>Creates charts (bar, line, column, pie) from data ranges</span></div>
+      <div class="cap-item"><span class="cap-icon">📋</span><span>Adds, renames, and manages worksheets</span></div>
+      <div class="cap-item"><span class="cap-icon">🔃</span><span>Sorts and filters data ranges</span></div>
+      <div class="cap-item"><span class="cap-icon">📎</span><span>Reads attached PDF, CSV, XLSX, TXT, JSON files</span></div>
+      <div class="cap-item"><span class="cap-icon">🤖</span><span>Multi-step agent loop — plans, executes, verifies, reports</span></div>
+      <div class="cap-item"><span class="cap-icon">🔌</span><span>OpenRouter · Gemini · Groq · Claude · Qwen/Alibaba · Ollama (local)</span></div>
+    </div>
+
+    <div class="settings-title">Quick Start</div>
+    <div class="about-desc" style="font-size:11.5px; color:var(--muted); line-height:1.8;">
+1. Go to Settings → pick your AI provider → enter API key → Save<br/>
+2. Click "Test Connection" to verify<br/>
+3. Come back to Chat → type your command<br/>
+4. Watch the agent work step by step<br/><br/>
+Example commands:<br/>
+• "Summarize the data in Sheet1 and add a total row"<br/>
+• "Create a bar chart of column A vs column B"<br/>
+• "Format all cells in row 1 as bold with green background"<br/>
+• "Read the attached CSV and paste it into Sheet2 starting at A1"<br/>
+• "Add a new sheet called Summary and write key metrics there"
+    </div>
+
+    <div class="divider"></div>
+    <div style="font-size:10px; color:var(--muted); text-align:center;">
+      Built by Shayntech &nbsp;·&nbsp; Your API key is stored locally only
+    </div>
+  </div>
+</div>
+
+<!-- Notification -->
+<div class="notif" id="notif"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  SHAYNTECH AI AGENT FOR EXCEL — Full Agent Logic
+//  Supports: OpenRouter, Qwen/DashScope, Ollama
+//  Features: Full workbook read, file attach, agent loop,
+//            write/formula/format/chart/sheet/sort tools
+// ═══════════════════════════════════════════════════════════════
+
+// ── ABSOLUTE FIRST: suppress all errors from CDN scripts broken by tracking prevention ──
+window.onerror = function(msg, src) {
+  // Suppress errors from office.js, pdf.js, xlsx.js — caused by Edge tracking prevention
+  if (!src) return false;
+  if (src.indexOf('office.js') !== -1) return true;
+  if (src.indexOf('pdf.min.js') !== -1) return true;
+  if (src.indexOf('xlsx.full') !== -1) return true;
+  return false;
+};
+
+let _officeInitDone = false;
+let _domReady = false;
+
+// ── Use Office.initialize (simple property — no localStorage needed) ──
+// This stops office.js's retry loop immediately without needing storage access
+try {
+  if (typeof Office !== 'undefined') {
+    Office.initialize = function(reason) {
+      _officeInitDone = true;
+      if (_domReady) _onBothReady();
+    };
+  } else {
+    _officeInitDone = true;
+  }
+} catch(e) {
+  _officeInitDone = true;
+}
+
+// ── PDF.js worker setup ──
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ── State ──
+let officeReady = false;
+let agentRunning = false;
+let stopRequested = false;
+let attachedFileContent = null;
+let attachedFileName = null;
+
+const cfg = {
+  provider: 'openrouter',
+  or: { key: '', model: 'deepseek/deepseek-r1:free' },
+  gm: { key: '', model: 'gemini-2.0-flash' },
+  gq: { key: '', model: 'llama-3.3-70b-versatile' },
+  cl: { key: '', model: 'claude-haiku-4-5' },
+  qw: { key: '', model: 'qwen-turbo', host: '' },
+  ol: { url: 'http://localhost:11434', model: 'llama3.2', key: '' },
+  maxIter: 20,
+  ctxRows: 500,
+  requireApproval: false
+};
+
+// ── Storage wrapper (localStorage blocked by tracking prevention in Office iframes) ──
+const storage = {
+  _mem: {},
+  setItem(key, val) {
+    try { localStorage.setItem(key, val); } catch(e) {}
+    this._mem[key] = val;
+  },
+  getItem(key) {
+    try {
+      const v = localStorage.getItem(key);
+      if (v !== null) return v;
+    } catch(e) {}
+    return this._mem[key] || null;
+  }
+};
+
+// ── Called once BOTH Office and DOM are ready ──
+window._appStarted = false;
+function _onBothReady() {
+  if (window._appStarted) return;
+  window._appStarted = true;
+  loadChatHistory();
+  try {
+    if (_officeInfo && _officeInfo.host === Office.HostType.Excel) {
+      officeReady = true;
+    } else {
+      officeReady = true;
+    }
+  } catch(e) {
+    officeReady = true;
+  }
+  setStatus('ready');
+  loadSettings();
+  loadSavedTheme();
+  // PRO: check login
+  var token = storage.getItem('pro_token');
+  if (!token) {
+    showLoginScreen();
+  } else {
+    hideLoginScreen();
+    refreshUsagePill();
+  }
+}
+
+// NOTE: _domReady = true and timeout fallback are set at the bottom of the script
+
+// ── DOM references ──
+const messagesEl   = document.getElementById('messages');
+const typingEl     = document.getElementById('typing-indicator');
+const inputEl      = document.getElementById('user-input');
+const sendBtn      = document.getElementById('send-btn');
+const stopBtn      = document.getElementById('stop-btn');
+const exportBtn    = document.getElementById('export-btn');
+const clearHistBtn = document.getElementById('clear-history-btn');
+if (exportBtn)    exportBtn.addEventListener('click', exportConversation);
+if (clearHistBtn) clearHistBtn.addEventListener('click', clearChatHistory);
+const attachBtn    = document.getElementById('attach-btn');
+const fileInput    = document.getElementById('file-input');
+const filePreview  = document.getElementById('attached-file-preview');
+const fileNameEl   = document.getElementById('attached-file-name');
+const removeFileBtn= document.getElementById('remove-file-btn');
+const statusDot    = document.getElementById('status-dot');
+const notifEl      = document.getElementById('notif');
+
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Provider tabs ──
+document.querySelectorAll('.ptab').forEach(pt => {
+  pt.addEventListener('click', () => {
+    document.querySelectorAll('.ptab').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.provider-config').forEach(c => c.classList.remove('active'));
+    pt.classList.add('active');
+    document.getElementById('cfg-' + pt.dataset.provider).classList.add('active');
+    cfg.provider = pt.dataset.provider;
+  });
+});
+
+// ── OpenRouter custom model toggle ──
+document.getElementById('or-model').addEventListener('change', function() {
+  document.getElementById('or-custom-field').style.display = this.value === 'custom' ? 'flex' : 'none';
+});
+
+// ── Settings: save & load ──
+function saveSettings() {
+  cfg.or.key   = document.getElementById('or-key').value.trim();
+  cfg.or.model = document.getElementById('or-model').value === 'custom'
+    ? document.getElementById('or-custom-model').value.trim()
+    : document.getElementById('or-model').value;
+  cfg.gm.key   = document.getElementById('gm-key').value.trim();
+  cfg.gm.model = document.getElementById('gm-model').value;
+  cfg.gq.key   = document.getElementById('gq-key').value.trim();
+  cfg.gq.model = document.getElementById('gq-model').value;
+  cfg.cl.key   = document.getElementById('cl-key').value.trim();
+  cfg.cl.model = document.getElementById('cl-model').value;
+  cfg.qw.key   = document.getElementById('qw-key').value.trim();
+  cfg.qw.model = document.getElementById('qw-model').value;
+  cfg.qw.host  = document.getElementById('qw-host').value.trim().replace(/\/$/, '');
+  cfg.ol.url   = document.getElementById('ol-url').value.trim().replace(/\/$/, '');
+  cfg.ol.model = document.getElementById('ol-model').value.trim();
+  cfg.ol.key   = document.getElementById('ol-key').value.trim();
+  cfg.maxIter  = parseInt(document.getElementById('max-iter').value);
+  cfg.ctxRows  = parseInt(document.getElementById('ctx-rows').value);
+  cfg.requireApproval = document.getElementById('require-approval').checked;
+
+  try {
+    storage.setItem('shayntech_cfg', JSON.stringify(cfg));
+    showNotif('Settings saved!', 'success');
+  } catch(e) {
+    showNotif('Settings saved (memory only — storage blocked by browser)', 'success');
+  }
+}
+
+function loadSettings() {
+  try {
+    const saved = storage.getItem('shayntech_cfg');
+    if (!saved) return;
+    const s = JSON.parse(saved);
+    Object.assign(cfg, s);
+    document.getElementById('or-key').value   = cfg.or.key || '';
+    document.getElementById('gm-key').value   = cfg.gm?.key || '';
+    document.getElementById('gq-key').value   = cfg.gq?.key || '';
+    document.getElementById('cl-key').value   = cfg.cl?.key || '';
+    document.getElementById('qw-key').value   = cfg.qw.key || '';
+    document.getElementById('qw-host').value  = cfg.qw.host || '';
+    document.getElementById('ol-url').value   = cfg.ol.url || 'http://localhost:11434';
+    document.getElementById('ol-model').value = cfg.ol.model || 'llama3.2';
+    document.getElementById('ol-key').value   = cfg.ol.key || '';
+    document.getElementById('max-iter').value  = cfg.maxIter || 20;
+    document.getElementById('ctx-rows').value  = cfg.ctxRows || 500;
+    document.getElementById('require-approval').checked = cfg.requireApproval || false;
+    if (cfg.gm?.model) document.getElementById('gm-model').value = cfg.gm.model;
+    if (cfg.gq?.model) document.getElementById('gq-model').value = cfg.gq.model;
+    if (cfg.cl?.model) document.getElementById('cl-model').value = cfg.cl.model;
+
+    // Set provider tab
+    const p = cfg.provider || 'openrouter';
+    document.querySelectorAll('.ptab').forEach(pt => pt.classList.toggle('active', pt.dataset.provider === p));
+    document.querySelectorAll('.provider-config').forEach(c => c.classList.toggle('active', c.id === 'cfg-' + p));
+
+    // Set model dropdowns
+    const orSel = document.getElementById('or-model');
+    const opts = Array.from(orSel.options).map(o => o.value);
+    if (cfg.or.model && opts.includes(cfg.or.model)) {
+      orSel.value = cfg.or.model;
+    } else if (cfg.or.model) {
+      orSel.value = 'custom';
+      document.getElementById('or-custom-model').value = cfg.or.model;
+      document.getElementById('or-custom-field').style.display = 'flex';
+    }
+
+    const qwSel = document.getElementById('qw-model');
+    if (cfg.qw.model) qwSel.value = cfg.qw.model;
+  } catch(e) { /* ignore */ }
+}
+
+document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+
+// ── Test connection ──
+document.getElementById('test-conn-btn').addEventListener('click', async () => {
+  saveSettings();
+  const btn = document.getElementById('test-conn-btn');
+  btn.textContent = '⏳ Testing...';
+  btn.disabled = true;
+  try {
+    const result = await callAI([{ role: 'user', content: 'Reply with only: OK' }]);
+    const resultText = typeof result === 'string' ? result : (result.content || JSON.stringify(result));
+    showNotif('✅ Connection OK: ' + resultText.slice(0, 40), 'success');
+  } catch(e) {
+    showNotif('❌ ' + (e.message || 'Connection failed'), 'fail');
+  }
+  btn.textContent = '🔌 Test Connection';
+  btn.disabled = false;
+});
+
+// ── File attach ──
+attachBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  fileInput.value = '';
+  showNotif('Reading file...', '');
+  try {
+    attachedFileContent = await readFile(file);
+    attachedFileName = file.name;
+    fileNameEl.textContent = file.name;
+    filePreview.classList.add('show');
+    showNotif('File attached: ' + file.name, 'success');
+  } catch(e) {
+    showNotif('Failed to read file: ' + e.message, 'fail');
+  }
+});
+
+removeFileBtn.addEventListener('click', () => {
+  attachedFileContent = null;
+  attachedFileName = null;
+  filePreview.classList.remove('show');
+});
+
+// ── File reader dispatcher ──
+async function readFile(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.pdf')) return await readPDF(file);
+  if (name.endsWith('.csv') || name.endsWith('.txt')) return await readText(file);
+  if (name.endsWith('.json')) return await readJSON(file);
+  if (name.endsWith('.xlsx') || name.endsWith('.xls')) return await readXLSX(file);
+  throw new Error('Unsupported file type. Use PDF, CSV, XLSX, TXT, or JSON.');
+}
+
+async function readText(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Failed to read text file'));
+    r.readAsText(file);
+  });
+}
+
+async function readJSON(file) {
+  const text = await readText(file);
+  try {
+    const obj = JSON.parse(text);
+    return JSON.stringify(obj, null, 2);
+  } catch(e) {
+    return text; // return raw if not valid JSON
+  }
+}
+
+async function readPDF(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const typedArray = new Uint8Array(e.target.result);
+        const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+        let text = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(item => item.str).join(' ') + '\n';
+        }
+        res(text.trim() || '[PDF contained no extractable text]');
+      } catch(err) {
+        rej(new Error('PDF parse error: ' + err.message));
+      }
+    };
+    reader.onerror = () => rej(new Error('Failed to read PDF'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function readXLSX(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        let output = '';
+        wb.SheetNames.forEach(name => {
+          const ws = wb.Sheets[name];
+          const csv = XLSX.utils.sheet_to_csv(ws);
+          output += `=== Sheet: ${name} ===\n${csv}\n\n`;
+        });
+        res(output.trim());
+      } catch(err) {
+        rej(new Error('XLSX parse error: ' + err.message));
+      }
+    };
+    reader.onerror = () => rej(new Error('Failed to read XLSX'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ── Status helpers ──
+function setStatus(state) {
+  statusDot.className = 'status-dot ' + state;
+}
+
+function showNotif(msg, type) {
+  notifEl.textContent = msg;
+  notifEl.className = 'notif show' + (type ? ' ' + type : '');
+  setTimeout(() => notifEl.classList.remove('show'), 3000);
+}
+
+// ── Message helpers ──
+function addMessage(type, text) {
+  const labels = { user: 'You', agent: 'Shayntech AI', system: 'System', error: 'Error', 'tool-call': 'Action' };
+  const div = document.createElement('div');
+  div.className = 'msg ' + type;
+  const copyBtn = (type === 'agent' || type === 'system')
+    ? '<button class="msg-copy-btn" onclick="copyMsgText(this)" title="Copy">Copy</button>'
+    : '';
+  div.innerHTML = `<span class="msg-label">${labels[type] || type}</span><div class="msg-bubble">${copyBtn}${escapeHtml(text)}</div>`;
+  messagesEl.insertBefore(div, typingEl);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  // Persist chat history (max 60 messages)
+  try {
+    const hist = JSON.parse(storage.getItem('chatHistory') || '[]');
+    hist.push({ type, text, ts: Date.now() });
+    if (hist.length > 60) hist.splice(0, hist.length - 60);
+    storage.setItem('chatHistory', JSON.stringify(hist));
+  } catch(e) {}
+  return div;
+}
+
+function copyMsgText(btn) {
+  const bubble = btn.parentElement;
+  const text = bubble.innerText.replace('Copy', '').trim();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = 'Copied!';
+      setTimeout(function() { btn.textContent = 'Copy'; }, 1500);
+    }).catch(function() { fallbackCopy(text, btn); });
+  } else { fallbackCopy(text, btn); }
+}
+
+function fallbackCopy(text, btn) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); if (btn) { btn.textContent = 'Copied!'; setTimeout(function() { btn.textContent = 'Copy'; }, 1500); } } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+function exportConversation() {
+  try {
+    const hist = JSON.parse(storage.getItem('chatHistory') || '[]');
+    if (hist.length === 0) { addMessage('system', 'No conversation history to export.'); return; }
+    const labels = { user: 'You', agent: 'Shayntech AI', system: 'System', error: 'Error', 'tool-call': 'Action' };
+    const lines = hist.map(function(m) {
+      const d = new Date(m.ts).toLocaleTimeString();
+      return '[' + d + '] ' + (labels[m.type] || m.type) + ':\n' + m.text;
+    });
+    const blob = new Blob([lines.join('\n\n---\n\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = 'shayntech-ai-chat-' + new Date().toISOString().slice(0,10) + '.txt';
+    a.click(); URL.revokeObjectURL(url);
+  } catch(e) { addMessage('error', 'Export failed: ' + e.message); }
+}
+
+function clearChatHistory() {
+  // WebView2 blocks window.confirm() — use inline confirm toast instead
+  var existing = document.getElementById('clear-confirm-toast');
+  if (existing) { existing.remove(); return; }
+  var toast = document.createElement('div');
+  toast.id = 'clear-confirm-toast';
+  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface-2);border:1px solid var(--border-bright);border-radius:10px;padding:12px 16px;z-index:9999;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-primary);box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+  toast.innerHTML = '<span>Clear all chat?</span>'
+    + '<button onclick="doClearChat()" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px;">Clear</button>'
+    + '<button onclick="document.getElementById(\'clear-confirm-toast\').remove()" style="background:var(--surface);color:var(--text-secondary);border:1px solid var(--border-bright);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;">Cancel</button>';
+  document.body.appendChild(toast);
+  setTimeout(function() { var t = document.getElementById('clear-confirm-toast'); if (t) t.remove(); }, 5000);
+}
+
+function doClearChat() {
+  var toast = document.getElementById('clear-confirm-toast');
+  if (toast) toast.remove();
+  storage.setItem('chatHistory', '[]');
+  messages = [];
+  const msgs = messagesEl.querySelectorAll('.msg');
+  msgs.forEach(function(m) { m.remove(); });
+  addMessage('system', 'Chat history cleared.');
+}
+
+function loadChatHistory() {
+  try {
+    const hist = JSON.parse(storage.getItem('chatHistory') || '[]');
+    if (hist.length === 0) return;
+    // Show last 20 messages on load
+    const recent = hist.slice(-20);
+    recent.forEach(function(m) {
+      const labels = { user: 'You', agent: 'Shayntech AI', system: 'System', error: 'Error', 'tool-call': 'Action' };
+      const div = document.createElement('div');
+      div.className = 'msg ' + m.type;
+      const copyBtn = (m.type === 'agent' || m.type === 'system')
+        ? '<button class="msg-copy-btn" onclick="copyMsgText(this)" title="Copy">Copy</button>'
+        : '';
+      div.innerHTML = '<span class="msg-label">' + (labels[m.type] || m.type) + '</span><div class="msg-bubble">' + copyBtn + escapeHtml(m.text) + '</div>';
+      messagesEl.insertBefore(div, typingEl);
+    });
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  } catch(e) {}
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function showTyping(show) {
+  typingEl.classList.toggle('show', show);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+// ── Input auto-resize ──
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
+});
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!agentRunning) handleSend();
+  }
+});
+
+sendBtn.addEventListener('click', () => { if (!agentRunning) handleSend(); });
+stopBtn.addEventListener('click', () => { stopRequested = true; });
+
+// ── Main send handler ──
+async function handleSend() {
+  const text = inputEl.value.trim();
+  if (!text) return;
+  if (!officeReady) { addMessage('error', 'Excel is not ready yet. Please wait a moment.'); return; }
+
+  // Check settings
+  if (!hasValidConfig()) {
+    addMessage('error', '⚠️ Please configure your AI provider in the Settings tab first.');
+    return;
+  }
+
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  addMessage('user', text + (attachedFileName ? '\n📎 ' + attachedFileName : ''));
+
+  const fileContent  = attachedFileContent;
+  const fileName     = attachedFileName;
+
+  // Clear attachment after use
+  attachedFileContent = null;
+  attachedFileName = null;
+  filePreview.classList.remove('show');
+
+  // Route to Formula Assistant or Agent based on mode
+  if (currentMode === 'formula') {
+    await handleFormulaMode(text);
+    return;
+  }
+
+  agentRunning = true;
+  stopRequested = false;
+  sendBtn.style.display = 'none';
+  stopBtn.style.display = 'flex';
+  setStatus('busy');
+  showTyping(true);
+
+  try {
+    await runAgent(text, fileContent, fileName);
+  } catch(e) {
+    addMessage('error', '❌ Agent error: ' + e.message);
+  }
+
+  showTyping(false);
+  agentRunning = false;
+  sendBtn.style.display = 'flex';
+  stopBtn.style.display = 'none';
+  setStatus('ready');
+}
+
+// ── All DOM refs and listeners ready — trigger init ──
+_domReady = true;
+if (_officeInitDone) _onBothReady();
+
+// Fallback: if Office.js never fires (blocked by tracking prevention), start UI after 2s
+setTimeout(function() {
+  if (!window._appStarted) _onBothReady();
+}, 2000);
+
+function hasValidConfig() {
+  const p = cfg.provider;
+  if (p === 'openrouter') return !!cfg.or.key && !!cfg.or.model;
+  // PRO: always configured (backend handles auth)
+  if (p === 'pro') return !!storage.getItem('pro_token');
+  if (p === 'gemini')     return !!cfg.gm?.key && !!cfg.gm?.model;
+  if (p === 'groq')       return !!cfg.gq?.key && !!cfg.gq?.model;
+  if (p === 'claude')     return !!cfg.cl?.key && !!cfg.cl?.model;
+  if (p === 'qwen')       return !!cfg.qw.key && !!cfg.qw.model;
+  if (p === 'ollama')     return !!cfg.ol.url && !!cfg.ol.model;
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  WORKBOOK READER
+// ═══════════════════════════════════════════════════════════════
+async function readWorkbook() {
+  return new Promise((resolve, reject) => {
+    Excel.run(async (context) => {
+      try {
+        const workbook = context.workbook;
+        const sheets = workbook.worksheets;
+        sheets.load('items/name');
+        await context.sync();
+
+        const result = { sheets: [] };
+
+        for (const sheet of sheets.items) {
+          const usedRange = sheet.getUsedRangeOrNullObject();
+          usedRange.load(['address', 'values', 'formulas', 'rowCount', 'columnCount']);
+          await context.sync();
+
+          if (usedRange.isNullObject) {
+            result.sheets.push({ name: sheet.name, empty: true });
+            continue;
+          }
+
+          const rowCount = Math.min(usedRange.rowCount, cfg.ctxRows);
+          const slicedValues   = usedRange.values.slice(0, rowCount);
+          const slicedFormulas = usedRange.formulas.slice(0, rowCount);
+
+          result.sheets.push({
+            name: sheet.name,
+            address: usedRange.address,
+            rowCount: usedRange.rowCount,
+            columnCount: usedRange.columnCount,
+            truncated: usedRange.rowCount > cfg.ctxRows,
+            values: slicedValues,
+            formulas: slicedFormulas
+          });
+        }
+
+        resolve(result);
+      } catch(e) {
+        reject(e);
+      }
+    }).catch(reject);
+  });
+}
+
+function workbookToText(wb) {
+  let out = `WORKBOOK SNAPSHOT (${wb.sheets.length} sheet(s)):\n\n`;
+  for (const sheet of wb.sheets) {
+    out += `── Sheet: "${sheet.name}" ──\n`;
+    if (sheet.empty) { out += '(empty)\n\n'; continue; }
+    out += `Range: ${sheet.address}, ${sheet.rowCount} rows × ${sheet.columnCount} cols`;
+    if (sheet.truncated) out += ` (showing first ${cfg.ctxRows} rows)`;
+    out += '\n';
+    if (sheet.values && sheet.values.length > 0) {
+      sheet.values.forEach((row, ri) => {
+        // Show formula if cell has one, else the value
+        const cells = row.map((val, ci) => {
+          const f = sheet.formulas[ri][ci];
+          return (typeof f === 'string' && f.startsWith('=')) ? f : String(val ?? '');
+        });
+        out += cells.join('\t') + '\n';
+      });
+    }
+    out += '\n';
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXCEL TOOL EXECUTOR
+// ═══════════════════════════════════════════════════════════════
+// ── Step 3: Global undo stack + persistent agent memory ──
+let undoStack = [];   // [{sheet, range, topLeft, values}]
+
+let agentMemory = {};
+try { agentMemory = JSON.parse(storage.getItem('agentMemory') || '{}'); } catch(e) { agentMemory = {}; }
+
+function saveMemoryKey(key, value) {
+  agentMemory[key] = value;
+  try { storage.setItem('agentMemory', JSON.stringify(agentMemory)); } catch(e) {}
+}
+
+function waitForApproval() {
+  return new Promise(function(resolve) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;gap:8px;padding:6px 4px;';
+    wrap.innerHTML = '<button id="approve-exec-btn" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;">✅ Approve & Execute</button><button id="reject-exec-btn" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;">❌ Cancel</button>';
+    messagesEl.insertBefore(wrap, typingEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    document.getElementById('approve-exec-btn').onclick = function() { wrap.remove(); resolve(true); };
+    document.getElementById('reject-exec-btn').onclick = function() { wrap.remove(); resolve(false); };
+  });
+}
+
+function applyUndo() {
+  if (undoStack.length === 0) {
+    addMessage('system', 'Nothing to undo.');
+    return;
+  }
+  const snap = undoStack.pop();
+  Excel.run(async function(context) {
+    const sheet = context.workbook.worksheets.getItem(snap.sheet);
+    const rng = sheet.getRange(snap.topLeft).getResizedRange(snap.values.length - 1, snap.values[0].length - 1);
+    rng.values = snap.values;
+    await context.sync();
+    addMessage('system', '↩ Undone: restored ' + snap.sheet + '!' + snap.range);
+    updateUndoBtn();
+  }).catch(function(e) { addMessage('error', 'Undo failed: ' + e.message); });
+}
+
+function updateUndoBtn() {
+  const btn = document.getElementById('undo-btn');
+  if (btn) btn.disabled = (undoStack.length === 0);
+}
+
+async function executeTool(toolName, args) {
+  return new Promise((resolve, reject) => {
+    Excel.run(async (context) => {
+      try {
+        let result = '';
+
+        // ── Universal arg guard helper ──
+        const need = (fields) => {
+          const missing = fields.filter(f => args[f] === undefined || args[f] === null || args[f] === '');
+          if (missing.length) { result = `ERROR: ${toolName} missing required args: ${missing.join(', ')}`; return false; }
+          return true;
+        };
+
+        if (toolName === 'write_range') {
+          if (!need(['sheet','range']) || !Array.isArray(args.values) || args.values.length === 0) {
+            result = result || 'ERROR: write_range requires sheet, range, and a non-empty values array.';
+          } else {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            // Normalize: pad all rows to the same column count (prevents dimension mismatch)
+            const maxCols = args.values.reduce(function(m, r) { return Math.max(m, Array.isArray(r) ? r.length : 1); }, 1);
+            const values = args.values.map(function(r) {
+              if (!Array.isArray(r)) return Array(maxCols).fill('');
+              if (r.length === maxCols) return r;
+              return r.concat(Array(maxCols - r.length).fill(''));
+            });
+            const numRows = values.length;
+            const numCols = maxCols;
+            const topLeft = args.range.split(':')[0];
+            // Save undo snapshot before overwriting
+            try {
+              const snapRng = sheet.getRange(topLeft).getResizedRange(numRows - 1, numCols - 1);
+              snapRng.load('values');
+              await context.sync();
+              undoStack.push({ sheet: args.sheet, range: args.range, topLeft, values: snapRng.values });
+              if (undoStack.length > 10) undoStack.shift();
+              updateUndoBtn();
+            } catch(e) { /* snapshot failed — skip silently */ }
+            const rng = sheet.getRange(topLeft).getResizedRange(numRows - 1, numCols - 1);
+            rng.values = values;
+            await context.sync();
+            result = `Wrote ${numRows} row(s) x ${numCols} col(s) to ${args.sheet}!${topLeft}`;
+          }
+        }
+
+        else if (toolName === 'set_formula') {
+          if (need(['sheet','cell','formula'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            sheet.getRange(args.cell).formulas = [[args.formula]];
+            await context.sync();
+            result = `Set formula ${args.formula} in ${args.sheet}!${args.cell}`;
+          }
+        }
+
+        else if (toolName === 'set_formulas_range') {
+          if (!need(['sheet','range']) || !Array.isArray(args.formulas) || args.formulas.length === 0) {
+            result = result || 'ERROR: set_formulas_range requires sheet, range, and a non-empty formulas array.';
+          } else {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const formulas = args.formulas;
+            const numRows = formulas.length;
+            const numCols = formulas[0] ? formulas[0].length : 1;
+            const topLeft = args.range.split(':')[0];
+            const rng = sheet.getRange(topLeft).getResizedRange(numRows - 1, numCols - 1);
+            rng.formulas = formulas;
+            await context.sync();
+            result = `Set formulas in ${args.sheet}!${topLeft}`;
+          }
+        }
+
+        else if (toolName === 'format_range') {
+          if (need(['sheet','range'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const rng = sheet.getRange(args.range);
+            if (args.bold !== undefined)        rng.format.font.bold = args.bold;
+            if (args.italic !== undefined)      rng.format.font.italic = args.italic;
+            if (args.fontSize !== undefined && args.fontSize !== '') rng.format.font.size = Number(args.fontSize);
+            if (args.color !== undefined && args.color !== '')       rng.format.font.color = args.color;
+            if (args.fillColor !== undefined && args.fillColor !== '') rng.format.fill.color = args.fillColor;
+            if (args.numberFormat !== undefined && args.numberFormat !== '') rng.numberFormat = [[args.numberFormat]];
+            if (args.wrapText !== undefined)    rng.format.wrapText = args.wrapText;
+            if (args.horizontalAlignment !== undefined && args.horizontalAlignment !== '') rng.format.horizontalAlignment = args.horizontalAlignment;
+            await context.sync();
+            result = `Formatted ${args.sheet}!${args.range}`;
+          }
+        }
+
+        else if (toolName === 'clear_range') {
+          if (need(['sheet','range'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            sheet.getRange(args.range).clear(args.clearType || 'All');
+            await context.sync();
+            result = `Cleared ${args.sheet}!${args.range}`;
+          }
+        }
+
+        else if (toolName === 'add_sheet') {
+          if (need(['name'])) {
+            const existing = context.workbook.worksheets;
+            existing.load('items/name');
+            await context.sync();
+            if (existing.items.map(s => s.name).includes(args.name)) {
+              result = `Sheet "${args.name}" already exists`;
+            } else {
+              context.workbook.worksheets.add(args.name);
+              await context.sync();
+              result = `Added sheet "${args.name}"`;
+            }
+          }
+        }
+
+        else if (toolName === 'rename_sheet') {
+          if (need(['oldName','newName'])) {
+            const sheet = context.workbook.worksheets.getItem(args.oldName);
+            sheet.name = args.newName;
+            await context.sync();
+            result = `Renamed sheet "${args.oldName}" to "${args.newName}"`;
+          }
+        }
+
+        else if (toolName === 'delete_sheet') {
+          if (need(['name'])) {
+            context.workbook.worksheets.getItem(args.name).delete();
+            await context.sync();
+            result = `Deleted sheet "${args.name}"`;
+          }
+        }
+
+        else if (toolName === 'activate_sheet') {
+          if (need(['name'])) {
+            context.workbook.worksheets.getItem(args.name).activate();
+            await context.sync();
+            result = `Activated sheet "${args.name}"`;
+          }
+        }
+
+        else if (toolName === 'create_chart') {
+          if (need(['sheet','dataRange','chartType'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const chartTypeMap = {
+              bar: Excel.ChartType.barClustered, column: Excel.ChartType.columnClustered,
+              line: Excel.ChartType.line, pie: Excel.ChartType.pie,
+              area: Excel.ChartType.area, scatter: Excel.ChartType.xyscatter
+            };
+            const ct = chartTypeMap[(args.chartType || 'column').toLowerCase()] || Excel.ChartType.columnClustered;
+            const dataRange = sheet.getRange(args.dataRange);
+            const chart = sheet.charts.add(ct, dataRange, Excel.ChartSeriesBy.auto);
+            if (args.title) { chart.title.visible = true; chart.title.text = args.title; }
+            chart.width = 400; chart.height = 260;
+            if (args.targetCell) {
+              const anchor = sheet.getRange(args.targetCell);
+              anchor.load(['top','left']);
+              await context.sync();
+              chart.top = anchor.top;
+              chart.left = anchor.left;
+            }
+            await context.sync();
+            result = `Created ${args.chartType} chart "${args.title || ''}" on ${args.sheet}`;
+          }
+        }
+
+        else if (toolName === 'sort_range') {
+          if (need(['sheet','range'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            sheet.getRange(args.range).sort.apply([{
+              key: args.columnIndex || 0,
+              ascending: args.ascending !== false
+            }]);
+            await context.sync();
+            result = `Sorted ${args.sheet}!${args.range} by column index ${args.columnIndex || 0}`;
+          }
+        }
+
+        else if (toolName === 'auto_fit') {
+          if (need(['sheet'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const target = args.range ? sheet.getRange(args.range) : sheet.getUsedRange();
+            target.format.autofitColumns();
+            target.format.autofitRows();
+            await context.sync();
+            result = `Auto-fitted columns/rows on ${args.sheet}`;
+          }
+        }
+
+        else if (toolName === 'set_column_width') {
+          if (need(['sheet','range','width'])) {
+            context.workbook.worksheets.getItem(args.sheet).getRange(args.range).format.columnWidth = args.width;
+            await context.sync();
+            result = `Set column width to ${args.width} on ${args.sheet}!${args.range}`;
+          }
+        }
+
+        else if (toolName === 'add_borders') {
+          if (need(['sheet','range'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const rng = sheet.getRange(args.range);
+            rng.load(['rowCount','columnCount']);
+            await context.sync();
+
+            // Map friendly style names → Excel BorderLineStyle + BorderWeight
+            const styleInput = (args.style || 'Thin').toLowerCase();
+            const lineStyle = (styleInput === 'dashed' || styleInput === 'dash') ? 'Dash'
+                            : (styleInput === 'dotted' || styleInput === 'dot')  ? 'Dot'
+                            : (styleInput === 'double')                          ? 'Double'
+                            : 'Continuous';
+            const weight    = (styleInput === 'medium') ? 'Medium'
+                            : (styleInput === 'thick')  ? 'Thick'
+                            : 'Thin';
+
+            const outerSides = ['EdgeTop','EdgeBottom','EdgeLeft','EdgeRight'];
+            outerSides.forEach(side => {
+              const b = rng.format.borders.getItem(side);
+              b.style = lineStyle;
+              b.weight = weight;
+            });
+            // Inside borders only valid when range has more than 1 row / column
+            if (rng.rowCount > 1) {
+              const bH = rng.format.borders.getItem('InsideHorizontal');
+              bH.style = lineStyle; bH.weight = 'Thin';
+            }
+            if (rng.columnCount > 1) {
+              const bV = rng.format.borders.getItem('InsideVertical');
+              bV.style = lineStyle; bV.weight = 'Thin';
+            }
+            await context.sync();
+            result = `Added borders to ${args.sheet}!${args.range}`;
+          }
+        }
+
+        else if (toolName === 'read_range') {
+          if (need(['sheet','range'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const rng = sheet.getRange(args.range);
+            rng.load('values');
+            await context.sync();
+            result = JSON.stringify(rng.values);
+          }
+        }
+
+        else if (toolName === 'get_sheet_names') {
+          const sheets = context.workbook.worksheets;
+          sheets.load('items/name');
+          await context.sync();
+          result = sheets.items.map(s => s.name).join(', ');
+        }
+
+        else if (toolName === 'insert_rows') {
+          if (need(['sheet','rowIndex'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const count = args.count || 1;
+            sheet.getRangeByIndexes(args.rowIndex, 0, count, 1).insert(Excel.InsertShiftDirection.down);
+            await context.sync();
+            result = `Inserted ${count} row(s) at index ${args.rowIndex} in ${args.sheet}`;
+          }
+        }
+
+        else if (toolName === 'delete_rows') {
+          if (need(['sheet','rowIndex'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const count = args.count || 1;
+            sheet.getRangeByIndexes(args.rowIndex, 0, count, 1).delete(Excel.DeleteShiftDirection.up);
+            await context.sync();
+            result = `Deleted ${count} row(s) at index ${args.rowIndex} in ${args.sheet}`;
+          }
+        }
+
+        else if (toolName === 'insert_columns') {
+          if (need(['sheet','columnIndex'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const count = args.count || 1;
+            sheet.getRangeByIndexes(0, args.columnIndex, 1, count).insert(Excel.InsertShiftDirection.right);
+            await context.sync();
+            result = `Inserted ${count} column(s) at index ${args.columnIndex} in ${args.sheet}`;
+          }
+        }
+
+        else if (toolName === 'delete_columns') {
+          if (need(['sheet','columnIndex'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const count = args.count || 1;
+            sheet.getRangeByIndexes(0, args.columnIndex, 1, count).delete(Excel.DeleteShiftDirection.left);
+            await context.sync();
+            result = `Deleted ${count} column(s) at index ${args.columnIndex} in ${args.sheet}`;
+          }
+        }
+
+        else if (toolName === 'merge_cells') {
+          if (need(['sheet','range'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            sheet.getRange(args.range).merge(args.across || false);
+            await context.sync();
+            result = `Merged cells ${args.sheet}!${args.range}`;
+          }
+        }
+
+        else if (toolName === 'freeze_panes') {
+          if (need(['sheet'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const rows = args.rows || 0;
+            const cols = args.columns || 0;
+            if (rows > 0 || cols > 0) {
+              sheet.freezePanes.freezeAt(sheet.getRangeByIndexes(rows, cols, 1, 1));
+            } else {
+              sheet.freezePanes.unfreeze();
+            }
+            await context.sync();
+            result = `Froze ${rows} row(s) and ${cols} column(s) on ${args.sheet}`;
+          }
+        }
+
+        else if (toolName === 'conditional_format') {
+          if (need(['sheet','range','type'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const rng = sheet.getRange(args.range);
+            const cf = rng.conditionalFormats.add(
+              args.type === 'cellValue'   ? Excel.ConditionalFormatType.cellValue :
+              args.type === 'colorScale'  ? Excel.ConditionalFormatType.colorScale :
+              args.type === 'dataBar'     ? Excel.ConditionalFormatType.dataBar :
+              args.type === 'topBottom'   ? Excel.ConditionalFormatType.topBottom :
+                                            Excel.ConditionalFormatType.presetCriteria
+            );
+            if (args.type === 'cellValue' && args.operator) {
+              const opMap = {
+                greaterThan: Excel.ConditionalCellValueOperator.greaterThan,
+                lessThan: Excel.ConditionalCellValueOperator.lessThan,
+                greaterThanOrEqualTo: Excel.ConditionalCellValueOperator.greaterThanOrEqualTo,
+                lessThanOrEqualTo: Excel.ConditionalCellValueOperator.lessThanOrEqualTo,
+                equalTo: Excel.ConditionalCellValueOperator.equalTo,
+                between: Excel.ConditionalCellValueOperator.between
+              };
+              cf.cellValue.rule = { operator: opMap[args.operator] || Excel.ConditionalCellValueOperator.greaterThan, formula1: String(args.value || 0), formula2: String(args.value2 || 0) };
+              if (args.fillColor) cf.cellValue.format.fill.color = args.fillColor;
+              if (args.fontColor) cf.cellValue.format.font.color = args.fontColor;
+            } else if (args.type === 'topBottom') {
+              const tbMap = { topItems: Excel.ConditionalTopBottomCriterionType.topItems, bottomItems: Excel.ConditionalTopBottomCriterionType.bottomItems, topPercent: Excel.ConditionalTopBottomCriterionType.topPercent, bottomPercent: Excel.ConditionalTopBottomCriterionType.bottomPercent };
+              cf.topBottom.rule = { rank: args.rank || 10, type: tbMap[args.topBottomType] || Excel.ConditionalTopBottomCriterionType.topItems };
+              if (args.fillColor) cf.topBottom.format.fill.color = args.fillColor;
+              if (args.fontColor) cf.topBottom.format.font.color = args.fontColor;
+            } else if (args.type === 'colorScale') {
+              cf.colorScale.criteria = {
+                minimum: { type: Excel.ConditionalFormatColorCriterionType.lowestValue, color: '#FF6B6B' },
+                midpoint: { type: Excel.ConditionalFormatColorCriterionType.percentile, value: 50, color: '#FFE66D' },
+                maximum: { type: Excel.ConditionalFormatColorCriterionType.highestValue, color: '#4ECDC4' }
+              };
+            }
+            await context.sync();
+            result = `Applied ${args.type} conditional format to ${args.sheet}!${args.range}`;
+          }
+        }
+
+        else if (toolName === 'formula_conditional_format') {
+          if (need(['sheet','range','formula'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const rng = sheet.getRange(args.range);
+            const cf = rng.conditionalFormats.add(Excel.ConditionalFormatType.custom);
+            cf.custom.rule.formula = args.formula;
+            if (args.fillColor) cf.custom.format.fill.color = args.fillColor;
+            if (args.fontColor) cf.custom.format.font.color = args.fontColor;
+            if (args.bold !== undefined) cf.custom.format.font.bold = args.bold;
+            await context.sync();
+            result = `Applied formula conditional format "${args.formula}" to ${args.sheet}!${args.range}`;
+          }
+        }
+
+        else if (toolName === 'apply_to_all_sheets') {
+          if (need(['operation'])) {
+            const op = args.operation;
+            const exclude = Array.isArray(args.exclude_sheets) ? args.exclude_sheets : [];
+            const sheets = context.workbook.worksheets;
+            sheets.load('items/name');
+            await context.sync();
+            const targets = sheets.items.filter(function(s) { return !exclude.includes(s.name); });
+            var processed = [];
+            for (var si = 0; si < targets.length; si++) {
+              var sh = targets[si];
+              var usedRng = sh.getUsedRange();
+              usedRng.load(['rowCount','columnCount']);
+              await context.sync();
+              if (!usedRng || usedRng.rowCount === 0) continue;
+              if (op === 'auto_fit') {
+                usedRng.format.autofitColumns();
+                usedRng.format.autofitRows();
+              } else if (op === 'freeze_header') {
+                sh.freezePanes.freezeRows(1);
+              } else if (op === 'format_header') {
+                var hdr = sh.getRange('A1').getResizedRange(0, usedRng.columnCount - 1);
+                hdr.format.font.bold = true;
+                if (args.fillColor) hdr.format.fill.color = args.fillColor;
+                if (args.fontColor) hdr.format.font.color = args.fontColor;
+                hdr.format.font.size = 12;
+              } else if (op === 'add_borders') {
+                var bStyle = Excel.BorderLineStyle[args.borderStyle || 'Thin'] || Excel.BorderLineStyle.thin;
+                var borders = usedRng.format.borders;
+                var bSides = ['EdgeTop','EdgeBottom','EdgeLeft','EdgeRight'];
+                if (usedRng.rowCount > 1) bSides.push('InsideHorizontal');
+                if (usedRng.columnCount > 1) bSides.push('InsideVertical');
+                bSides.forEach(function(side) {
+                  borders.getItem(Excel.BorderIndex[side]).style = bStyle;
+                });
+              } else if (op === 'clear_content') {
+                usedRng.clear(Excel.ClearApplyTo.contents);
+              } else if (op === 'set_tab_color') {
+                if (args.tabColor) sh.tabColor = args.tabColor;
+              }
+              await context.sync();
+              processed.push(sh.name);
+            }
+            result = 'Applied ' + op + ' to ' + processed.length + ' sheets: ' + processed.join(', ');
+          }
+        }
+
+        else if (toolName === 'find_replace') {
+          if (need(['sheet','find','replace'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const target = args.range ? sheet.getRange(args.range) : sheet.getUsedRange();
+            target.replaceAll(args.find, args.replace, {
+              matchCase: args.matchCase || false,
+              matchEntireCell: args.matchEntireCell || false
+            });
+            await context.sync();
+            result = `Replaced "${args.find}" with "${args.replace}" in ${args.sheet}`;
+          }
+        }
+
+        else if (toolName === 'analyze_data') {
+          if (need(['sheet','range'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const rng = sheet.getRange(args.range);
+            rng.load(['values','rowCount','columnCount']);
+            await context.sync();
+            const values = rng.values;
+            const hasHeader = args.has_header !== false;
+            const headers = hasHeader ? values[0] : null;
+            const dataRows = hasHeader ? values.slice(1) : values;
+            const colCount = values[0] ? values[0].length : 0;
+            const stats = {};
+            for (let c = 0; c < colCount; c++) {
+              const colName = (headers && headers[c] !== '' && headers[c] !== null) ? String(headers[c]) : ('Col' + (c+1));
+              const colVals = dataRows.map(function(r) { return r[c]; });
+              const nums = colVals.filter(function(v) { return typeof v === 'number' && !isNaN(v); });
+              const blanks = colVals.filter(function(v) { return v === '' || v === null || v === undefined; }).length;
+              if (nums.length === 0) {
+                stats[colName] = { type: 'text', count: colVals.length - blanks, blank: blanks };
+              } else {
+                nums.sort(function(a,b){return a-b;});
+                const sum = nums.reduce(function(a,b){return a+b;}, 0);
+                const mean = sum / nums.length;
+                const median = nums.length % 2 === 0 ? (nums[nums.length/2-1]+nums[nums.length/2])/2 : nums[Math.floor(nums.length/2)];
+                const variance = nums.reduce(function(a,b){return a+Math.pow(b-mean,2);}, 0) / nums.length;
+                const stdev = Math.sqrt(variance);
+                const q1 = nums[Math.floor(nums.length*0.25)];
+                const q3 = nums[Math.floor(nums.length*0.75)];
+                const iqr = q3 - q1;
+                const outliers = nums.filter(function(v){return v < q1-1.5*iqr || v > q3+1.5*iqr;}).length;
+                stats[colName] = { type:'numeric', count:nums.length, blank:blanks,
+                  min:Math.round(nums[0]*100)/100, max:Math.round(nums[nums.length-1]*100)/100,
+                  sum:Math.round(sum*100)/100, mean:Math.round(mean*100)/100,
+                  median:Math.round(median*100)/100, stdev:Math.round(stdev*100)/100,
+                  q1:Math.round(q1*100)/100, q3:Math.round(q3*100)/100, outliers };
+              }
+            }
+            result = JSON.stringify({ rows: dataRows.length, columns: colCount, stats }, null, 2);
+          }
+        }
+        else if (toolName === 'clean_data') {
+          if (need(['sheet','range'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const rng = sheet.getRange(args.range);
+            rng.load('values');
+            await context.sync();
+            const vals = rng.values;
+            let trimCount = 0, blankCount = 0;
+            const fillBlank = (args.fill_blank !== undefined && args.fill_blank !== null && args.fill_blank !== '') ? args.fill_blank : null;
+            const cleaned = vals.map(function(row) {
+              return row.map(function(cell) {
+                if (typeof cell === 'string') {
+                  const t = cell.trim();
+                  if (t !== cell) trimCount++;
+                  if (t === '' && fillBlank !== null) { blankCount++; return fillBlank; }
+                  return t;
+                }
+                if ((cell === null || cell === '') && fillBlank !== null) { blankCount++; return fillBlank; }
+                return cell;
+              });
+            });
+            const topLeft = args.range.split(':')[0];
+            sheet.getRange(topLeft).getResizedRange(cleaned.length-1, cleaned[0].length-1).values = cleaned;
+            await context.sync();
+            result = 'Cleaned ' + args.sheet + '!' + args.range + ': trimmed ' + trimCount + ' cells, filled ' + blankCount + ' blanks.';
+          }
+        }
+        else if (toolName === 'highlight_outliers') {
+          if (need(['sheet','range'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const rng = sheet.getRange(args.range);
+            rng.load(['values','rowCount','columnCount']);
+            await context.sync();
+            const vals = rng.values;
+            const flat = [].concat.apply([], vals).filter(function(v){return typeof v==='number' && !isNaN(v);});
+            if (flat.length === 0) { result = 'No numeric values found for outlier detection.'; }
+            else {
+              flat.sort(function(a,b){return a-b;});
+              const q1 = flat[Math.floor(flat.length*0.25)];
+              const q3 = flat[Math.floor(flat.length*0.75)];
+              const iqr = q3-q1, lower = q1-1.5*iqr, upper = q3+1.5*iqr;
+              let cnt = 0;
+              for (let r=0; r<vals.length; r++) {
+                for (let c=0; c<vals[r].length; c++) {
+                  const v = vals[r][c];
+                  if (typeof v==='number' && (v<lower || v>upper)) {
+                    const cell = sheet.getRange(args.range).getCell(r, c);
+                    cell.format.fill.color = '#C00000';
+                    cell.format.font.color = '#FFFFFF';
+                    cell.format.font.bold = true;
+                    cnt++;
+                  }
+                }
+              }
+              await context.sync();
+              result = 'Highlighted ' + cnt + ' outlier(s) in ' + args.sheet + '!' + args.range + ' (IQR bounds: [' + lower.toFixed(2) + ', ' + upper.toFixed(2) + ']).';
+            }
+          }
+        }
+        else if (toolName === 'add_data_validation') {
+          if (need(['sheet','range','type'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const rng = sheet.getRange(args.range);
+            if (args.type === 'list' && args.values && args.values.length > 0) {
+              rng.dataValidation.rule = { list: { inCellDropDown: true, source: args.values.join(',') } };
+              rng.dataValidation.prompt = { showPrompt: true, title: 'Select value', message: 'Choose from the dropdown list.' };
+              await context.sync();
+              result = 'Added dropdown validation to ' + args.sheet + '!' + args.range + ' with options: ' + args.values.join(', ');
+            } else if (args.type === 'whole' || args.type === 'decimal') {
+              const minV = args.min !== undefined ? args.min : 0;
+              const maxV = args.max !== undefined ? args.max : 1000000;
+              rng.dataValidation.rule = { wholeNumber: { formula1: String(minV), formula2: String(maxV), operator: 'Between' } };
+              await context.sync();
+              result = 'Added number validation (' + minV + ' to ' + maxV + ') to ' + args.sheet + '!' + args.range;
+            } else { result = 'Unsupported validation type: ' + args.type; }
+          }
+        }
+        else if (toolName === 'smart_fill') {
+          if (need(['sheet','start','count','type'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            const count = Math.max(1, parseInt(args.count) || 1);
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            let fillVals = [];
+            if (args.type === 'months') {
+              const startStr = args.start_val || 'Jan 2026';
+              const parts = startStr.split(' ');
+              let mIdx = months.indexOf(parts[0]); if (mIdx < 0) mIdx = 0;
+              let year = parseInt(parts[1]) || 2026;
+              for (let i=0; i<count; i++) { fillVals.push([months[mIdx] + ' ' + year]); mIdx++; if(mIdx>=12){mIdx=0;year++;} }
+            } else if (args.type === 'numbers') {
+              let num = parseFloat(args.start_val) || 1;
+              const step = args.step || 1;
+              for (let i=0; i<count; i++) { fillVals.push([Math.round(num*100)/100]); num += step; }
+            } else if (args.type === 'dates') {
+              let d = new Date(args.start_val || '2026-01-01');
+              for (let i=0; i<count; i++) { fillVals.push([d.toLocaleDateString('en-GB')]); d.setDate(d.getDate()+1); }
+            } else if (args.type === 'custom' && args.custom && args.custom.length > 0) {
+              for (let i=0; i<count; i++) { fillVals.push([args.custom[i % args.custom.length]]); }
+            }
+            if (fillVals.length > 0) {
+              sheet.getRange(args.start).getResizedRange(fillVals.length-1, 0).values = fillVals;
+              await context.sync();
+              result = 'Filled ' + fillVals.length + ' cells starting at ' + args.sheet + '!' + args.start;
+            } else { result = 'smart_fill: could not generate series for type=' + args.type; }
+          }
+        }
+        else if (toolName === 'protect_sheet') {
+          if (need(['sheet'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            sheet.protection.protect({ allowFormatCells: false, allowFormatColumns: false, allowInsertRows: false, allowDeleteRows: false }, args.password || '');
+            await context.sync();
+            result = 'Sheet "' + args.sheet + '" is now protected.';
+          }
+        }
+        else if (toolName === 'unprotect_sheet') {
+          if (need(['sheet'])) {
+            const sheet = context.workbook.worksheets.getItem(args.sheet);
+            sheet.protection.unprotect(args.password || '');
+            await context.sync();
+            result = 'Sheet "' + args.sheet + '" is now unprotected.';
+          }
+        }
+        else if (toolName === 'save_memory') {
+          if (need(['key','value'])) {
+            saveMemoryKey(args.key, args.value);
+            result = 'Memory saved: "' + args.key + '" = "' + args.value + '"';
+          }
+        }
+        else if (toolName === 'get_memory') {
+          const memKeys = (args.keys && args.keys.length) ? args.keys : Object.keys(agentMemory);
+          const memResult = {};
+          memKeys.forEach(function(k) { if (agentMemory[k] !== undefined) memResult[k] = agentMemory[k]; });
+          result = Object.keys(memResult).length > 0 ? JSON.stringify(memResult) : 'Memory is empty.';
+        }
+        else if (toolName === 'undo_last_action') {
+          if (undoStack.length === 0) {
+            result = 'Nothing to undo — undo stack is empty.';
+          } else {
+            const snap = undoStack.pop();
+            const snapSheet = context.workbook.worksheets.getItem(snap.sheet);
+            const snapRng = snapSheet.getRange(snap.topLeft).getResizedRange(snap.values.length - 1, snap.values[0].length - 1);
+            snapRng.values = snap.values;
+            await context.sync();
+            updateUndoBtn();
+            result = 'Undone: restored previous values in ' + snap.sheet + '!' + snap.range;
+          }
+        }
+        else {
+          result = `Unknown tool: ${toolName}`;
+        }
+
+        resolve(result);
+      } catch(e) {
+        reject(new Error(`Tool ${toolName} failed: ${e.message}`));
+      }
+    }).catch(reject);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AI PROVIDER CALLER
+// ═══════════════════════════════════════════════════════════════
+// Normalize a response message so tool_call arguments are always JSON strings.
+// Some models (Qwen, Ollama, occasional OpenRouter responses) return arguments
+// as a parsed object instead of a string, which breaks the next API call.
+function normalizeMessage(msg) {
+  if (msg && msg.tool_calls) {
+    msg.tool_calls = msg.tool_calls.map(tc => {
+      if (tc.function && typeof tc.function.arguments !== 'string') {
+        tc.function.arguments = JSON.stringify(tc.function.arguments || {});
+      }
+      return tc;
+    });
+  }
+  return msg;
+}
+
+// Normalize the entire outgoing messages array before sending to any provider.
+// Ensures assistant tool_call arguments are always JSON strings,
+// and tool role content is always a plain string.
+function normalizeMessages(messages) {
+  return messages.map(m => {
+    if (!m) return m;
+    if (m.role === 'assistant' && m.tool_calls) {
+      return Object.assign({}, m, {
+        tool_calls: m.tool_calls.map(tc => {
+          if (!tc || !tc.function) return tc;
+          const args = tc.function.arguments;
+          return Object.assign({}, tc, {
+            id: String(tc.id || tc.function.name || 'tool_0'),
+            function: Object.assign({}, tc.function, {
+              arguments: typeof args === 'string' ? args : JSON.stringify(args || {})
+            })
+          });
+        })
+      });
+    }
+    if (m.role === 'tool') {
+      return Object.assign({}, m, {
+        tool_call_id: String(m.tool_call_id || 'tool_0'),
+        content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+      });
+    }
+    return m;
+  });
+}
+
+// ── PRO: Backend proxy call ──
+var PRO_BACKEND_URL = 'https://excel-ai-pro-backend.replit.app'; // update after Replit deploy
+
+async function callAI(messages, tools) {
+  return callProBackend(messages, tools);
+}
+
+async function callProBackend(messages, tools) {
+  var token = storage.getItem('pro_token');
+  if (!token) throw new Error('Not logged in. Please log in to continue.');
+
+  var body = { messages: normalizeMessages(messages) };
+  if (tools && tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = 'auto';
+  }
+
+  var res = await fetch(PRO_BACKEND_URL + '/api/chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (res.status === 401) {
+    storage.setItem('pro_token', '');
+    showLoginScreen();
+    throw new Error('Session expired. Please log in again.');
+  }
+
+  if (res.status === 402) {
+    var errData = await res.json();
+    var checkoutUrl = errData.checkout_url || '#';
+    showUpgradeModal(checkoutUrl);
+    throw new Error(errData.message || 'Free limit reached. Please upgrade.');
+  }
+
+  if (!res.ok) {
+    var errData2 = await res.json().catch(function() { return {}; });
+    throw new Error(errData2.error || 'Backend error ' + res.status);
+  }
+
+  var data = await res.json();
+  // Refresh usage pill after each call
+  refreshUsagePill();
+  return data;
+}
+
+async function callOpenRouter(messages, tools) {
+  if (!cfg.or.key) throw new Error('OpenRouter API key is missing. Please add it in Settings.');
+  if (!cfg.or.model) throw new Error('OpenRouter model is not set. Please configure it in Settings.');
+
+  const body = {
+    model: cfg.or.model,
+    messages,
+    max_tokens: 2000,
+    temperature: 0.2,
+    stream: false
+  };
+  if (tools && tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = 'auto';
+  }
+
+  body.messages = normalizeMessages(body.messages);
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + cfg.or.key,
+      'HTTP-Referer': 'https://excelai.replit.app',
+      'X-Title': 'Shayntech AI Agent'
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    let errText = '';
+    try { errText = await res.text(); } catch(e) {}
+    if (res.status === 401) throw new Error('OpenRouter: Invalid API key (401). Please check your key in Settings.');
+    if (res.status === 402) throw new Error('OpenRouter: Account credits exhausted (402). Add credits at openrouter.ai.');
+    if (res.status === 422 || res.status === 400) {
+      // Model may not support tool calling — retry without tools
+      if (tools && tools.length > 0) {
+        const body2 = { model: cfg.or.model, messages, max_tokens: 2000, temperature: 0.2, stream: false };
+        const res2 = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + cfg.or.key,
+            'HTTP-Referer': 'https://excelai.replit.app',
+            'X-Title': 'Shayntech AI Agent'
+          },
+          body: JSON.stringify(body2)
+        });
+        if (!res2.ok) {
+          const err2 = await res2.text();
+          throw new Error(`OpenRouter ${res2.status}: ${err2.slice(0,200)}`);
+        }
+        const data2 = await res2.json();
+        if (!data2.choices || !data2.choices[0]) throw new Error('No response from OpenRouter');
+        return data2.choices[0].message;
+      }
+      throw new Error(`OpenRouter ${res.status}: Model may not support this request. Try a different model. ${errText.slice(0,150)}`);
+    }
+    throw new Error(`OpenRouter error ${res.status}: ${errText.slice(0,200)}`);
+  }
+
+  const data = await res.json();
+  if (!data.choices || !data.choices[0]) throw new Error('No response from OpenRouter');
+  return normalizeMessage(data.choices[0].message);
+}
+
+async function callGemini(messages, tools) {
+  if (!cfg.gm?.key) throw new Error('Gemini API key is missing. Please add it in Settings.');
+
+  messages = normalizeMessages(messages);
+
+  // Convert OpenAI message format → Gemini format
+  const systemParts = [];
+  const geminiContents = [];
+
+  for (const m of messages) {
+    if (m.role === 'system') {
+      systemParts.push({ text: m.content });
+    } else if (m.role === 'user') {
+      geminiContents.push({ role: 'user', parts: [{ text: m.content || '' }] });
+    } else if (m.role === 'assistant') {
+      const parts = [];
+      if (m.content) parts.push({ text: m.content });
+      if (m.tool_calls) {
+        for (const tc of m.tool_calls) {
+          let args = tc.function.arguments;
+          if (typeof args === 'string') try { args = JSON.parse(args); } catch(e) {}
+          parts.push({ functionCall: { name: tc.function.name, args } });
+        }
+      }
+      if (parts.length) geminiContents.push({ role: 'model', parts });
+    } else if (m.role === 'tool') {
+      // Tool result — attach to last model turn or create user turn
+      const resultPart = { functionResponse: { name: m.name || 'tool', response: { result: m.content } } };
+      geminiContents.push({ role: 'user', parts: [resultPart] });
+    }
+  }
+
+  // Build Gemini tool declarations
+  const geminiTools = (tools && tools.length > 0) ? [{
+    functionDeclarations: tools.map(t => ({
+      name: t.function.name,
+      description: t.function.description,
+      parameters: t.function.parameters
+    }))
+  }] : undefined;
+
+  const reqBody = {
+    contents: geminiContents,
+    generationConfig: { maxOutputTokens: 2048, temperature: 0.2 }
+  };
+  if (systemParts.length) reqBody.systemInstruction = { parts: systemParts };
+  if (geminiTools) reqBody.tools = geminiTools;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${cfg.gm.model}:generateContent?key=${cfg.gm.key}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(reqBody)
+  });
+
+  if (!res.ok) {
+    let errText = ''; try { errText = await res.text(); } catch(e) {}
+    if (res.status === 400) throw new Error('Gemini 400: ' + errText.slice(0, 200));
+    if (res.status === 403) throw new Error('Gemini: Invalid API key (403). Check your key at aistudio.google.com.');
+    if (res.status === 429) throw new Error('Gemini: Rate limit hit (429). Wait a moment and retry.');
+    throw new Error(`Gemini error ${res.status}: ${errText.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  const candidate = data.candidates?.[0];
+  if (!candidate) throw new Error('No response from Gemini');
+
+  // Convert Gemini response → OpenAI message format
+  const parts = candidate.content?.parts || [];
+  let textContent = '';
+  const toolCalls = [];
+
+  for (const part of parts) {
+    if (part.text) textContent += part.text;
+    if (part.functionCall) {
+      toolCalls.push({
+        id: 'gemini_' + Math.random().toString(36).slice(2, 9),
+        type: 'function',
+        function: {
+          name: part.functionCall.name,
+          arguments: JSON.stringify(part.functionCall.args || {})
+        }
+      });
+    }
+  }
+
+  const msg = { role: 'assistant', content: textContent || null };
+  if (toolCalls.length > 0) msg.tool_calls = toolCalls;
+  return normalizeMessage(msg);
+}
+
+async function callGroq(messages, tools) {
+  if (!cfg.gq?.key) throw new Error('Groq API key is missing. Please add it in Settings.');
+
+  const body = {
+    model: cfg.gq.model,
+    messages,
+    max_tokens: 2048,
+    temperature: 0.2,
+    stream: false
+  };
+  if (tools && tools.length > 0) {
+    body.tools = tools;
+    body.tool_choice = 'auto';
+  }
+
+  body.messages = normalizeMessages(body.messages);
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + cfg.gq.key
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    let errText = ''; try { errText = await res.text(); } catch(e) {}
+    if (res.status === 401) throw new Error('Groq: Invalid API key (401). Check your key at console.groq.com.');
+    if (res.status === 429) throw new Error('Groq: Rate limit (429). Wait a moment and retry.');
+    throw new Error(`Groq error ${res.status}: ${errText.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  if (!data.choices?.[0]) throw new Error('No response from Groq');
+  return normalizeMessage(data.choices[0].message);
+}
+
+async function callClaude(messages, tools) {
+  if (!cfg.cl?.key) throw new Error('Claude API key is missing. Please add it in Settings.');
+
+  messages = normalizeMessages(messages);
+
+  // Separate system message from conversation
+  const systemMsg = messages.find(m => m.role === 'system');
+  const conversation = messages.filter(m => m.role !== 'system');
+
+  // Convert tool results: Claude uses role:'user' with tool_result content blocks
+  const claudeMessages = [];
+  for (const m of conversation) {
+    if (m.role === 'assistant') {
+      const content = [];
+      if (m.content) content.push({ type: 'text', text: m.content });
+      if (m.tool_calls) {
+        for (const tc of m.tool_calls) {
+          let inp = tc.function.arguments;
+          if (typeof inp === 'string') try { inp = JSON.parse(inp); } catch(e) { inp = {}; }
+          content.push({ type: 'tool_use', id: tc.id, name: tc.function.name, input: inp });
+        }
+      }
+      claudeMessages.push({ role: 'assistant', content });
+    } else if (m.role === 'tool') {
+      // Group consecutive tool results into one user message
+      const last = claudeMessages[claudeMessages.length - 1];
+      const block = { type: 'tool_result', tool_use_id: m.tool_call_id, content: String(m.content) };
+      if (last && last.role === 'user' && Array.isArray(last.content)) {
+        last.content.push(block);
+      } else {
+        claudeMessages.push({ role: 'user', content: [block] });
+      }
+    } else {
+      claudeMessages.push(m);
+    }
+  }
+
+  const reqBody = {
+    model: cfg.cl.model,
+    max_tokens: 2048,
+    messages: claudeMessages
+  };
+  if (systemMsg) reqBody.system = systemMsg.content;
+  if (tools && tools.length > 0) {
+    reqBody.tools = tools.map(t => ({
+      name: t.function.name,
+      description: t.function.description,
+      input_schema: t.function.parameters
+    }));
+  }
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': cfg.cl.key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(reqBody)
+  });
+
+  if (!res.ok) {
+    let errText = ''; try { errText = await res.text(); } catch(e) {}
+    if (res.status === 401) throw new Error('Claude: Invalid API key (401). Check your key at console.anthropic.com.');
+    if (res.status === 529) throw new Error('Claude: API overloaded (529). Try again in a moment.');
+    throw new Error(`Claude error ${res.status}: ${errText.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  if (!data.content) throw new Error('No response from Claude');
+
+  // Convert Claude response → OpenAI message format
+  let textContent = '';
+  const toolCalls = [];
+
+  for (const block of data.content) {
+    if (block.type === 'text') textContent += block.text;
+    if (block.type === 'tool_use') {
+      toolCalls.push({
+        id: block.id,
+        type: 'function',
+        function: {
+          name: block.name,
+          arguments: JSON.stringify(block.input || {})
+        }
+      });
+    }
+  }
+
+  const msg = { role: 'assistant', content: textContent || null };
+  if (toolCalls.length) msg.tool_calls = toolCalls;
+  return normalizeMessage(msg);
+}
+
+async function callQwen(messages, tools) {
+  if (!cfg.qw.key) throw new Error('Qwen/Alibaba API key is missing. Please add it in Settings.');
+  if (!cfg.qw.model) throw new Error('Qwen model is not set. Please configure it in Settings.');
+
+  // Clean the base URL: ensure https://, strip trailing slash and accidental /chat/completions suffix
+  let qwBaseUrl = (cfg.qw.host || 'https://dashscope.aliyuncs.com/compatible-mode/v1').trim();
+  if (qwBaseUrl && !qwBaseUrl.startsWith('http')) qwBaseUrl = 'https://' + qwBaseUrl;
+  qwBaseUrl = qwBaseUrl.replace(/\/+$/, '').replace(/\/chat\/completions$/i, '');
+
+  const qwHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + cfg.qw.key
+  };
+
+  async function doQwenRequest(includeTools) {
+    // Deep-clone + strictly validate every message before sending to Qwen
+    var safeMessages = messages.map(function(m) {
+      if (m.role === 'assistant' && Array.isArray(m.tool_calls)) {
+        return {
+          role: 'assistant',
+          content: m.content !== undefined ? m.content : null,
+          tool_calls: m.tool_calls.map(function(tc) {
+            var rawArgs = tc.function ? tc.function.arguments : undefined;
+            var safeArgs;
+            if (typeof rawArgs === 'string') {
+              try { JSON.parse(rawArgs); safeArgs = rawArgs; } catch(e) { safeArgs = '{}'; }
+            } else {
+              try { safeArgs = JSON.stringify(rawArgs || {}); } catch(e) { safeArgs = '{}'; }
+            }
+            return {
+              id: String(tc.id || (tc.function && tc.function.name) || 'tool_0'),
+              type: 'function',
+              function: { name: tc.function.name, arguments: safeArgs }
+            };
+          })
+        };
+      }
+      if (m.role === 'tool') {
+        return {
+          role: 'tool',
+          tool_call_id: String(m.tool_call_id || 'tool_0'),
+          content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '')
+        };
+      }
+      return m;
+    });
+
+    const body = {
+      model: cfg.qw.model,
+      messages: safeMessages,
+      max_tokens: 2000,
+      temperature: 0.2,
+      stream: false
+    };
+    if (includeTools && tools && tools.length > 0) {
+      body.tools = tools;
+      body.tool_choice = 'auto';
+    }
+    return fetch(qwBaseUrl + '/chat/completions', {
+      method: 'POST',
+      headers: qwHeaders,
+      body: JSON.stringify(body)
+    });
+  }
+
+  let res = await doQwenRequest(true);
+
+  // Some Qwen models (qwen-max, etc.) reject tool calling with 400 —
+  // retry without tools so the model can still respond via plain text
+  if (!res.ok && (res.status === 400 || res.status === 422) && tools && tools.length > 0) {
+    res = await doQwenRequest(false);
+  }
+
+  if (!res.ok) {
+    let errText = '';
+    try { errText = await res.text(); } catch(e) {}
+    if (res.status === 401) throw new Error('Qwen: Invalid API key (401). Check your key and endpoint. Host: ' + qwBaseUrl);
+    if (res.status === 403) throw new Error('Qwen: Access denied (403). Key may not have permission for this model.');
+    throw new Error(`Qwen error ${res.status}: ${errText.slice(0,200)}`);
+  }
+
+  const data = await res.json();
+  if (!data.choices || !data.choices[0]) throw new Error('No response from Qwen');
+  return normalizeMessage(data.choices[0].message);
+}
+
+async function callOllama(messages, tools) {
+  // Ollama supports OpenAI-compatible endpoint
+  const url = cfg.ol.url + '/api/chat';
+  const body = {
+    model: cfg.ol.model,
+    messages,
+    stream: false,
+    options: { temperature: 0.2, num_predict: 2000 }
+  };
+
+  // Ollama supports tools via /v1/chat/completions (OpenAI compat) in newer versions
+  // We'll use the OpenAI-compatible endpoint for tool support
+  const useOpenAICompat = tools && tools.length > 0;
+  const finalUrl = useOpenAICompat
+    ? cfg.ol.url + '/v1/chat/completions'
+    : url;
+
+  const finalBody = useOpenAICompat
+    ? { model: cfg.ol.model, messages, tools, tool_choice: 'auto', temperature: 0.2 }
+    : body;
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (cfg.ol.key) headers['Authorization'] = 'Bearer ' + cfg.ol.key;
+
+  if (finalBody.messages) finalBody.messages = normalizeMessages(finalBody.messages);
+  const res = await fetch(finalUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(finalBody)
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Ollama error ${res.status}: ${err.slice(0,200)}`);
+  }
+
+  const data = await res.json();
+
+  if (useOpenAICompat) {
+    if (!data.choices || !data.choices[0]) throw new Error('No response from Ollama');
+    return normalizeMessage(data.choices[0].message);
+  } else {
+    if (!data.message) throw new Error('No response from Ollama');
+    return normalizeMessage(data.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TOOL DEFINITIONS (OpenAI function-calling format)
+// ═══════════════════════════════════════════════════════════════
+const TOOL_DEFINITIONS = [
+  {
+    type: 'function',
+    function: {
+      name: 'write_range',
+      description: 'Write values into a cell range in a worksheet. Use for pasting data, tables, text.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:  { type: 'string', description: 'Worksheet name' },
+          range:  { type: 'string', description: 'Cell range e.g. A1 or A1:D10' },
+          values: { type: 'array', items: { type: 'array' }, description: '2D array of values. Each inner array is a row.' }
+        },
+        required: ['sheet','range','values']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'set_formula',
+      description: 'Set a single Excel formula in one cell.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:   { type: 'string', description: 'Worksheet name' },
+          cell:    { type: 'string', description: 'Cell address e.g. B2' },
+          formula: { type: 'string', description: 'Excel formula starting with = e.g. =SUM(A1:A10)' }
+        },
+        required: ['sheet','cell','formula']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'set_formulas_range',
+      description: 'Set formulas in a range of cells.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:    { type: 'string' },
+          range:    { type: 'string', description: 'Cell range e.g. C2:C10' },
+          formulas: { type: 'array', items: { type: 'array' }, description: '2D array of formula strings' }
+        },
+        required: ['sheet','range','formulas']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'format_range',
+      description: 'Format cells: bold, italic, font size, font color, fill color, number format, wrap text, alignment.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:               { type: 'string' },
+          range:               { type: 'string' },
+          bold:                { type: 'boolean' },
+          italic:              { type: 'boolean' },
+          fontSize:            { type: 'number' },
+          color:               { type: 'string', description: 'Font color hex e.g. #FF0000' },
+          fillColor:           { type: 'string', description: 'Background fill hex e.g. #00FF00' },
+          numberFormat:        { type: 'string', description: 'e.g. #,##0.00 or 0% or MM/DD/YYYY' },
+          wrapText:            { type: 'boolean' },
+          horizontalAlignment: { type: 'string', enum: ['Left','Center','Right','Fill','Justify'] }
+        },
+        required: ['sheet','range']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'clear_range',
+      description: 'Clear contents, formats, or all from a range.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:     { type: 'string' },
+          range:     { type: 'string' },
+          clearType: { type: 'string', enum: ['All','Contents','Formats'], description: 'Default All' }
+        },
+        required: ['sheet','range']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_sheet',
+      description: 'Add a new worksheet with a given name.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'New sheet name' }
+        },
+        required: ['name']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'rename_sheet',
+      description: 'Rename an existing worksheet.',
+      parameters: {
+        type: 'object',
+        properties: {
+          oldName: { type: 'string' },
+          newName: { type: 'string' }
+        },
+        required: ['oldName','newName']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_sheet',
+      description: 'Delete a worksheet.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' }
+        },
+        required: ['name']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'activate_sheet',
+      description: 'Switch to / activate a worksheet so the user sees it.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' }
+        },
+        required: ['name']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_chart',
+      description: 'Create a chart from a data range. Chart types: bar, column, line, pie, area, scatter.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:       { type: 'string' },
+          dataRange:   { type: 'string', description: 'Range containing chart data e.g. A1:B10' },
+          chartType:   { type: 'string', enum: ['bar','column','line','pie','area','scatter'] },
+          title:       { type: 'string' },
+          targetCell:  { type: 'string', description: 'Cell where chart top-left will be placed e.g. D2' }
+        },
+        required: ['sheet','dataRange','chartType']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'sort_range',
+      description: 'Sort a data range by a column.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:       { type: 'string' },
+          range:       { type: 'string' },
+          columnIndex: { type: 'number', description: '0-based column index to sort by' },
+          ascending:   { type: 'boolean', description: 'true=A-Z, false=Z-A' }
+        },
+        required: ['sheet','range']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'auto_fit',
+      description: 'Auto-fit column widths and row heights for a sheet or range.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          range: { type: 'string', description: 'Optional: specific range. If omitted, applies to entire used range.' }
+        },
+        required: ['sheet']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_borders',
+      description: 'Add borders to a cell range.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          range: { type: 'string' },
+          style: { type: 'string', enum: ['Thin','Medium','Thick','Dashed','Dotted','Double'], description: 'Default Thin' }
+        },
+        required: ['sheet','range']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'read_range',
+      description: 'Read the values from a specific range. Use this to verify data before acting.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          range: { type: 'string' }
+        },
+        required: ['sheet','range']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_sheet_names',
+      description: 'Get the list of all worksheet names in the workbook.',
+      parameters: { type: 'object', properties: {} }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'insert_rows',
+      description: 'Insert blank rows above a given row index.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          rowIndex: { type: 'number', description: '0-based row index to insert above' },
+          count: { type: 'number', description: 'Number of rows to insert (default 1)' }
+        },
+        required: ['sheet','rowIndex']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_rows',
+      description: 'Delete rows at a given row index.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          rowIndex: { type: 'number', description: '0-based row index to delete' },
+          count: { type: 'number', description: 'Number of rows to delete (default 1)' }
+        },
+        required: ['sheet','rowIndex']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'insert_columns',
+      description: 'Insert blank columns before a given column index.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          columnIndex: { type: 'number', description: '0-based column index to insert before' },
+          count: { type: 'number', description: 'Number of columns to insert (default 1)' }
+        },
+        required: ['sheet','columnIndex']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_columns',
+      description: 'Delete columns at a given column index.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          columnIndex: { type: 'number', description: '0-based column index to delete' },
+          count: { type: 'number', description: 'Number of columns to delete (default 1)' }
+        },
+        required: ['sheet','columnIndex']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'merge_cells',
+      description: 'Merge a range of cells into one.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          range: { type: 'string', description: 'Range to merge e.g. A1:D1' },
+          across: { type: 'boolean', description: 'If true, merge each row separately (merge across)' }
+        },
+        required: ['sheet','range']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'freeze_panes',
+      description: 'Freeze rows and/or columns so they stay visible when scrolling.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          rows: { type: 'number', description: 'Number of rows to freeze from top (e.g. 1 to freeze header row)' },
+          columns: { type: 'number', description: 'Number of columns to freeze from left (default 0)' }
+        },
+        required: ['sheet','rows']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'formula_conditional_format',
+      description: 'Apply formula-based conditional formatting — use when the condition compares two columns (e.g. Stock < Reorder Level = =$C2<$D2), or any rule that requires a custom Excel formula. The formula must start with = and use absolute column + relative row references like =$C2<$D2.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:      { type: 'string', description: 'Worksheet name' },
+          range:      { type: 'string', description: 'Range to apply formatting to e.g. A2:E100' },
+          formula:    { type: 'string', description: 'Excel formula starting with = e.g. =$C2<$D2' },
+          fillColor:  { type: 'string', description: 'Background color hex e.g. #FFC7CE' },
+          fontColor:  { type: 'string', description: 'Font color hex e.g. #9C0006' },
+          bold:       { type: 'boolean', description: 'Make font bold' }
+        },
+        required: ['sheet','range','formula']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'conditional_format',
+      description: 'Apply conditional formatting to highlight cells based on their values.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          range: { type: 'string' },
+          type: { type: 'string', enum: ['cellValue','colorScale','dataBar','topBottom','aboveBelow'], description: 'Type of conditional format' },
+          operator: { type: 'string', enum: ['greaterThan','lessThan','greaterThanOrEqualTo','lessThanOrEqualTo','equalTo','between'], description: 'Operator for cellValue type' },
+          value: { type: 'number', description: 'Threshold value for cellValue type' },
+          value2: { type: 'number', description: 'Second value for between operator' },
+          fillColor: { type: 'string', description: 'Fill color hex for matching cells e.g. #FF0000' },
+          fontColor: { type: 'string', description: 'Font color hex for matching cells' },
+          topBottomType: { type: 'string', enum: ['topItems','bottomItems','topPercent','bottomPercent'], description: 'For topBottom type' },
+          rank: { type: 'number', description: 'Number of top/bottom items (default 10)' }
+        },
+        required: ['sheet','range','type']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'find_replace',
+      description: 'Find and replace values across a sheet or range.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string' },
+          find: { type: 'string', description: 'Text to search for' },
+          replace: { type: 'string', description: 'Text to replace with' },
+          range: { type: 'string', description: 'Optional: limit search to a specific range' },
+          matchCase: { type: 'boolean', description: 'Case-sensitive match (default false)' },
+          matchEntireCell: { type: 'boolean', description: 'Match entire cell content only (default false)' }
+        },
+        required: ['sheet','find','replace']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'analyze_data',
+      description: 'Read a range and compute statistical summary (count, min, max, mean, median, stdev, outlier count, blank count) for each column. Returns JSON. Use this before creating data dashboards or when user asks to analyze or summarize data.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:      { type: 'string', description: 'Worksheet name' },
+          range:      { type: 'string', description: 'Range to analyze e.g. A1:E100' },
+          has_header: { type: 'boolean', description: 'True if first row is a header row (default true)' }
+        },
+        required: ['sheet','range']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'clean_data',
+      description: 'Clean a range: trim whitespace from text cells, fill blank cells with a specified value. Returns count of changes made.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:      { type: 'string', description: 'Worksheet name' },
+          range:      { type: 'string', description: 'Range to clean e.g. A1:E100' },
+          fill_blank: { type: 'string', description: 'Value to fill blank cells with, e.g. "N/A" or "0". Omit to leave blanks.' }
+        },
+        required: ['sheet','range']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'highlight_outliers',
+      description: 'Detect and highlight statistical outliers in a numeric range using the IQR method. Highlights outlier cells in red.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet: { type: 'string', description: 'Worksheet name' },
+          range: { type: 'string', description: 'Numeric range to check e.g. B2:B100' }
+        },
+        required: ['sheet','range']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_data_validation',
+      description: 'Add data validation to a range. Type "list" adds a dropdown. Type "whole" or "decimal" restricts to number ranges.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:  { type: 'string', description: 'Worksheet name' },
+          range:  { type: 'string', description: 'Range to validate e.g. B2:B100' },
+          type:   { type: 'string', enum: ['list','whole','decimal'], description: 'Validation type' },
+          values: { type: 'array', items: { type: 'string' }, description: 'Options for list type e.g. ["Yes","No","Pending"]' },
+          min:    { type: 'number', description: 'Minimum value for whole/decimal type' },
+          max:    { type: 'number', description: 'Maximum value for whole/decimal type' }
+        },
+        required: ['sheet','range','type']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'smart_fill',
+      description: 'Fill a series downward from a starting cell. Detects pattern type automatically (number increment, month names, date series, or custom list).',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:     { type: 'string', description: 'Worksheet name' },
+          start:     { type: 'string', description: 'Top-left cell to start from e.g. A2' },
+          count:     { type: 'number', description: 'How many rows to fill' },
+          type:      { type: 'string', enum: ['months','numbers','dates','custom'], description: 'Series type' },
+          start_val: { type: 'string', description: 'Starting value e.g. "Jan 2026", "1", "2026-01-01"' },
+          step:      { type: 'number', description: 'Increment step for numbers (default 1)' },
+          custom:    { type: 'array', items: { type: 'string' }, description: 'Custom list to repeat e.g. ["Mon","Tue","Wed"]' }
+        },
+        required: ['sheet','start','count','type']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'protect_sheet',
+      description: 'Protect a worksheet to prevent accidental edits. Optionally set a password.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:    { type: 'string', description: 'Worksheet name' },
+          password: { type: 'string', description: 'Optional password' }
+        },
+        required: ['sheet']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'unprotect_sheet',
+      description: 'Remove protection from a worksheet.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sheet:    { type: 'string', description: 'Worksheet name' },
+          password: { type: 'string', description: 'Password if one was set' }
+        },
+        required: ['sheet']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'save_memory',
+      description: 'Save a key-value fact to persistent agent memory. Use this to remember user preferences, sheet names, column positions, or any reusable context for future sessions.',
+      parameters: {
+        type: 'object',
+        properties: {
+          key:   { type: 'string', description: 'Memory key, e.g. "preferred_sheet" or "currency"' },
+          value: { type: 'string', description: 'Value to remember' }
+        },
+        required: ['key','value']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_memory',
+      description: 'Retrieve previously saved memory keys. Call at the start of a task if user context might be relevant.',
+      parameters: {
+        type: 'object',
+        properties: {
+          keys: { type: 'array', items: { type: 'string' }, description: 'Specific keys to fetch. Omit to get all memory.' }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'undo_last_action',
+      description: 'Revert the last write_range operation, restoring the previous cell values.',
+      parameters: { type: 'object', properties: {}, required: [] }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'apply_to_all_sheets',
+      description: 'Apply a batch operation to all sheets (or a list of sheets) at once. Use this instead of looping through sheets one by one. Operations: auto_fit, freeze_header, format_header, add_borders, clear_content, set_tab_color.',
+      parameters: {
+        type: 'object',
+        properties: {
+          operation: { type: 'string', enum: ['auto_fit','freeze_header','format_header','add_borders','clear_content','set_tab_color'], description: 'Operation to apply to all sheets' },
+          exclude_sheets: { type: 'array', items: { type: 'string' }, description: 'Sheet names to skip (optional)' },
+          fillColor:   { type: 'string', description: 'Header fill color for format_header (e.g. #1F3864)' },
+          fontColor:   { type: 'string', description: 'Header font color for format_header (e.g. #FFFFFF)' },
+          tabColor:    { type: 'string', description: 'Tab color hex for set_tab_color (e.g. #00B050)' },
+          borderStyle: { type: 'string', enum: ['Thin','Medium','Thick'], description: 'Border style for add_borders (default Thin)' }
+        },
+        required: ['operation']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'task_complete',
+      description: 'Call this when the task is fully finished. Provide a summary of what was done.',
+      parameters: {
+        type: 'object',
+        properties: {
+          summary: { type: 'string', description: 'Short summary of all actions taken.' }
+        },
+        required: ['summary']
+      }
+    }
+  }
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  AGENT LOOP
+// ═══════════════════════════════════════════════════════════════
+async function runAgent(userCommand, fileContent, fileName) {
+
+  // 1. Read workbook
+  addMessage('system', '📊 Reading workbook...');
+  let workbookText = '';
+  try {
+    const wb = await readWorkbook();
+    workbookText = workbookToText(wb);
+  } catch(e) {
+    workbookText = '(Could not read workbook: ' + e.message + ')';
+  }
+
+  // 2. Build system prompt
+  const systemPrompt = `You are an elite Excel AI Agent built by Shayntech. You are a professional data analyst and spreadsheet designer who creates beautiful, publication-quality workbooks.
+
+═══════════════════════════════════════
+AVAILABLE TOOLS
+═══════════════════════════════════════
+ARABIC & MULTILINGUAL RULES
+═══════════════════════════════════════
+1. Detect the user's language from their message.
+2. If the user writes in Arabic, respond ENTIRELY in Arabic — all explanations, plan steps, tool call reasoning, and task_complete messages must be in Arabic.
+3. Never mix English and Arabic in the same response.
+4. When writing Arabic text into Excel cells via write_range, the values will be RTL — always follow up with format_range using horizontalAlignment:'Right' on those cells.
+5. Arabic column headers should also be Right-aligned.
+6. If the user switches language mid-conversation, switch your response language to match immediately.
+
+═══════════════════════════════════════
+DATA:         write_range, read_range, find_replace
+FORMULAS:     set_formula, set_formulas_range
+FORMATTING:   format_range, add_borders, merge_cells, conditional_format, formula_conditional_format
+STRUCTURE:    insert_rows, delete_rows, insert_columns, delete_columns, auto_fit, freeze_panes
+SHEETS:       add_sheet, rename_sheet, delete_sheet, activate_sheet, get_sheet_names
+CHARTS:       create_chart (types: bar, column, line, pie, area, scatter)
+MEMORY:       save_memory, get_memory
+ANALYSIS:     analyze_data, clean_data, highlight_outliers
+VALIDATION:   add_data_validation
+BATCH:        apply_to_all_sheets (operations: auto_fit, freeze_header, format_header, add_borders, clear_content, set_tab_color)
+UTILS:        smart_fill, protect_sheet, unprotect_sheet, sort_range, clear_range, undo_last_action, task_complete
+
+═══════════════════════════════════════
+ERROR RECOVERY RULES
+═══════════════════════════════════════
+When a tool returns an ERROR message, you MUST follow these rules:
+1. READ the full error message including any RETRY HINT carefully
+2. NEVER call the same tool with the same arguments again after an error
+3. ALWAYS try the suggested approach from the RETRY HINT
+4. If error says "cell-editing mode" → call activate_sheet first, then retry
+5. If error says "dimension mismatch" → pass only the top-left cell as range (e.g. "A1"), never guess the full range
+6. If error says "not found" → call get_sheet_names to confirm sheet names, then retry
+7. If error says "missing required args" or args were {} → re-read the tool definition and provide ALL required parameters
+8. If a tool fails twice → try a completely different approach to achieve the same result
+9. If conditional_format fails → use formula_conditional_format instead
+10. Maximum 2 retries per operation — if still failing, skip it and explain why in task_complete
+11. format_range specifically: if it fails once, do NOT retry it — skip formatting entirely and call task_complete. The write/data task is already complete; formatting is optional polish.
+
+═══════════════════════════════════════
+PROFESSIONAL FORMATTING STANDARDS
+═══════════════════════════════════════
+FORMATTING RULE: Only apply formatting when (a) explicitly asked by the user, OR (b) you are creating a brand-new report/dashboard/table from scratch.
+Do NOT auto-format when simply updating or writing values into an EXISTING sheet — just complete the write task and call task_complete.
+When formatting IS appropriate, follow these standards:
+
+HEADERS (row 1 or title rows):
+• Bold: true, fontSize: 12
+• fillColor: "#1F3864" (dark navy), color: "#FFFFFF" (white text)
+• horizontalAlignment: "Center"
+• Merge header cells if it's a title spanning multiple columns
+
+DATA ROWS (alternating is ideal):
+• Even rows fillColor: "#EBF3FB" (light blue), Odd rows: no fill
+• Font size 11, normal weight
+
+BORDERS:
+• Always add borders to data tables (style: "Thin")
+• Use "Medium" for outer border of the table
+
+COLUMNS:
+• Always call auto_fit after writing data
+
+FREEZE PANES:
+• Freeze row 1 (header) after writing a table: freeze_panes with rows=1
+
+NUMBERS & CURRENCY:
+• Currency: numberFormat "#,##0.00"
+• Percentages: numberFormat "0.00%"
+• Large numbers: numberFormat "#,##0"
+• Dates: numberFormat "DD/MM/YYYY"
+
+CHARTS (create automatically when data is suitable):
+• Time series data → line chart
+• Category comparisons → column chart
+• Part-of-whole → pie chart
+• Correlation data → scatter chart
+• Place chart at a logical position (targetCell 2 rows below data)
+• Always set a descriptive title
+
+CONDITIONAL FORMATTING (apply proactively):
+• Numeric KPI columns → colorScale to show high/low
+• Sales/revenue → highlight top 10 with green (#C6EFCE)
+• Negative values → highlight with red (#FFC7CE)
+
+COLOR PALETTE (use consistently):
+• Primary header: #1F3864 (dark navy)
+• Secondary header: #2E75B6 (medium blue)
+• Accent: #00B0F0 (light blue)
+• Positive highlight: #C6EFCE (green)
+• Negative highlight: #FFC7CE (pink/red)
+• Neutral: #FFFFCC (yellow)
+• Alternate row: #EBF3FB (very light blue)
+
+═══════════════════════════════════════
+RULES
+═══════════════════════════════════════
+1. ALWAYS call task_complete when done with a clear summary.
+2. Apply professional formatting automatically — do not wait to be asked.
+3. Use exact sheet names from the workbook snapshot below.
+4. write_range values must be 2D array: [["h1","h2"],["v1","v2"]]
+5. Formulas must start with =  e.g. =SUM(A1:A10)
+6. After writing a table: auto_fit columns, add borders, freeze header row.
+7. If data looks like a report → create a chart automatically.
+8. If task fails → try alternative approach, never give up without trying.
+9. Be precise with cell references — you are modifying the user's real data.
+10. PIVOT TABLE TECHNIQUE: Excel JS API has no native pivot. Build pivot summaries like this:
+    a) Use read_range or workbook snapshot to find all unique values in the group column
+    b) Write headers (e.g. ["Region","Total Sales"]) with write_range
+    c) Use set_formulas_range with SUMIF formulas: =SUMIF($A$2:$A$100,D2,$B$2:$B$100)
+    d) Fill actual unique values in the label column first, then add SUMIF formulas
+    e) Format the summary table professionally, then create a chart from it
+    f) NEVER use =SUMIF on an empty label cell — write label values first, formulas second
+11. CHART RULE: Only chart ranges that have actual data. Use read_range to verify values exist before charting.
+12. PLANNING RULE: On the FIRST response of any task, output a brief '📋 Plan:' section as plain text listing your intended steps BEFORE calling any tools. Keep it to 3-5 bullet points.
+13. MEMORY RULE: At the start of complex tasks, call get_memory to check for saved user preferences. Use save_memory to remember sheet names, column layouts, or user preferences for future sessions.
+14. DATA ANALYSIS RULE: When user asks to "analyze", "summarize", or "check" data — always call analyze_data first to get statistics, then write a clean summary table to a new sheet or below the data. Include: row count, column stats (min/max/mean/median/stdev), blank counts, and outlier count.
+15. SMART CHART RULE: Choose chart type based on data: time series → line, category comparison → column/bar, part of whole → pie, two numeric variables → scatter, multiple KPIs over time → area.
+16. AUTO CLEAN RULE: If analyze_data reveals blank cells or text inconsistencies, proactively offer or call clean_data before analysis.
+17. OUTLIER RULE: For financial or numeric datasets, always call highlight_outliers after writing data to flag anomalies automatically.
+18. DASHBOARD RULE: After analyzing data, create a "Dashboard" sheet with: (a) a stats summary table, (b) a chart of the most important metric, (c) conditional formatting on key columns. Use save_memory to remember the dashboard sheet name.
+19. DATE COLUMN RULE: If a column expected to contain text month labels (e.g. "Jan 2026") shows as numeric serial dates after read_range, the values were auto-converted by Excel. In this case: (a) first set the column numberFormat to "MMM-YY" using format_range so values display correctly, (b) use SUMIF with TEXT() criteria OR use SUMIFS with date range: =SUMPRODUCT((MONTH(Sheet!G$2:G$21)=1)*(YEAR(Sheet!G$2:G$21)=2026)*Sheet!F$2:F$21). Never use hardcoded serial numbers for SUMIF — always verify with read_range first.
+20. TEXT FORMAT RULE: Before writing month/date labels that should stay as text (like "Jan 2026", "Q1 2026"), first call format_range with numberFormat "@" on that column range to force text storage and prevent Excel auto-conversion.
+
+AGENT MEMORY (from previous sessions):
+${Object.keys(agentMemory).length > 0 ? Object.entries(agentMemory).map(function(e){return e[0]+': '+e[1];}).join('\n') : '(empty)'}
+
+CURRENT WORKBOOK:
+${workbookText}${fileContent ? `\n\nATTACHED FILE: ${fileName}\n${'─'.repeat(40)}\n${fileContent.slice(0, 8000)}${fileContent.length > 8000 ? '\n...[truncated]' : ''}` : ''}`;
+
+  // 3. Conversation history for this agent run
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user',   content: userCommand }
+  ];
+
+  let iterations = 0;
+  const maxIter = cfg.maxIter;
+
+  // ── Plan Approval Phase ──
+  if (cfg.requireApproval) {
+    addMessage('system', '🤔 Generating plan...');
+    showTyping(true);
+    const planSystemPrompt = `You are a planning assistant for an Excel AI agent. The user will give you a task. Output ONLY a numbered plan (3-6 steps) describing what you will do. Do NOT call any tools. Do NOT start executing. Be concise and specific about which sheets, ranges, and operations you will use.`;
+    const planMessages = [
+      { role: 'system', content: planSystemPrompt },
+      { role: 'user',   content: userCommand + (workbookText ? '\n\nWorkbook context:\n' + workbookText.slice(0, 1500) : '') }
+    ];
+    let planText = '';
+    try {
+      const planMsg = await callAI(planMessages, []);
+      planText = (planMsg && planMsg.content) ? planMsg.content.trim() : 'Ready to execute your request.';
+    } catch(e) {
+      planText = 'Ready to execute your request. (Planning call failed: ' + e.message + ')';
+    }
+    showTyping(false);
+    addMessage('agent', '📋 Plan:\n\n' + planText);
+    const approved = await waitForApproval();
+    if (!approved) {
+      addMessage('system', '⛔ Plan cancelled by user. Nothing was changed.');
+      return;
+    }
+    addMessage('system', '✅ Plan approved — executing...');
+    showTyping(true);
+  }
+
+  showTyping(true);
+
+  // 4. Agent loop
+  while (iterations < maxIter) {
+    if (stopRequested) {
+      addMessage('system', '⏹ Agent stopped by user.');
+      break;
+    }
+
+    iterations++;
+    showTyping(true);
+
+    let assistantMsg;
+    try {
+      assistantMsg = await callAI(messages, TOOL_DEFINITIONS);
+    } catch(e) {
+      addMessage('error', '❌ AI call failed: ' + e.message + '\n\nTip: Check your API key and model in Settings.');
+      break;
+    }
+
+    showTyping(false);
+
+    // Add assistant message to history
+    messages.push(assistantMsg);
+
+    // Check for tool calls
+    const toolCalls = assistantMsg.tool_calls;
+
+    if (!toolCalls || toolCalls.length === 0) {
+      // Pure text response — show it and end
+      const text = assistantMsg.content || '(No response)';
+      if (text.trim()) addMessage('agent', text);
+      break;
+    }
+
+    // Show plan / commentary text BEFORE executing tools
+    if (assistantMsg.content && assistantMsg.content.trim()) {
+      addMessage('agent', assistantMsg.content);
+    }
+
+    // Process each tool call
+    let taskDone = false;
+
+    for (const tc of toolCalls) {
+      if (stopRequested) break;
+
+      const toolName = tc.function.name;
+      let toolArgs = {};
+
+      try {
+        toolArgs = JSON.parse(tc.function.arguments || '{}');
+      } catch(e) {
+        toolArgs = {};
+      }
+
+      if (toolName === 'task_complete') {
+        const summary = toolArgs.summary || 'Task completed.';
+        addMessage('agent', '✅ Done!\n\n' + summary);
+        taskDone = true;
+        break;
+      }
+
+      // Show the action being taken
+      addMessage('tool-call', `⚡ ${toolName}(${JSON.stringify(toolArgs, null, 0).slice(0, 120)}...)`);
+
+      let toolResult = '';
+      try {
+        toolResult = await executeTool(toolName, toolArgs);
+      } catch(e) {
+        toolResult = buildErrorHint(toolName, toolArgs, e.message);
+        addMessage('error', `Tool ${toolName} failed: ${e.message}`);
+      }
+
+      // Add tool result to conversation
+      // Ensure id and content are always plain strings (Qwen rejects non-string values)
+      const tcId = String(tc.id || tc.function?.name || 'tool_0');
+      const tcContent = typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult);
+      messages.push({
+        role: 'tool',
+        tool_call_id: tcId,
+        content: tcContent
+      });
+    }
+
+    if (taskDone) break;
+  }
+
+  if (iterations >= maxIter && !stopRequested) {
+    addMessage('system', `⚠️ Agent reached max iterations (${maxIter}). Task may be incomplete. Increase limit in Settings.`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  THEME SELECTOR
+// ═══════════════════════════════════════════════════════════
+
+var THEMES = {
+  dark: {
+    "--bg":      "#0d0f14",
+    "--bg2":     "#14171f",
+    "--bg3":     "#1c2030",
+    "--border":  "#2a2f42",
+    "--accent":  "#00e5a0",
+    "--accent2": "#0099ff",
+    "--danger":  "#ff4d6d",
+    "--text":    "#e8eaf0",
+    "--muted":   "#6b7280",
+    "--user-bg": "#1a2a1f",
+    "--ai-bg":   "#141824"
+  },
+  light: {
+    "--bg":      "#f0f2f8",
+    "--bg2":     "#ffffff",
+    "--bg3":     "#e8ebf5",
+    "--border":  "#d1d5e8",
+    "--accent":  "#6366f1",
+    "--accent2": "#0099ff",
+    "--danger":  "#ef4444",
+    "--text":    "#1a1a2e",
+    "--muted":   "#64748b",
+    "--user-bg": "#eef2ff",
+    "--ai-bg":   "#f8faff"
+  },
+  midnight: {
+    "--bg":      "#070b14",
+    "--bg2":     "#0f1628",
+    "--bg3":     "#161e35",
+    "--border":  "#1e2a45",
+    "--accent":  "#7c3aed",
+    "--accent2": "#06b6d4",
+    "--danger":  "#f43f5e",
+    "--text":    "#e2e8f0",
+    "--muted":   "#64748b",
+    "--user-bg": "#1a0f2e",
+    "--ai-bg":   "#0d1220"
+  }
+};
+
+function applyTheme(name) {
+  var theme = THEMES[name];
+  if (!theme) return;
+  var root = document.documentElement;
+  Object.keys(theme).forEach(function(key) {
+    root.style.setProperty(key, theme[key]);
+  });
+  // Update active card
+  document.querySelectorAll(".theme-card").forEach(function(c) {
+    c.classList.remove("active");
+  });
+  var card = document.getElementById("theme-" + name);
+  if (card) card.classList.add("active");
+  // Update send button color for light theme
+  var sendBtn = document.getElementById("send-btn");
+  if (sendBtn) {
+    sendBtn.style.background = theme["--accent"];
+    sendBtn.style.color = name === "light" ? "#ffffff" : "#000000";
+  }
+  // Persist
+  try { storage.setItem("selectedTheme", name); } catch(e) {}
+}
+
+function loadSavedTheme() {
+  try {
+    var saved = storage.getItem("selectedTheme");
+    if (saved && THEMES[saved]) applyTheme(saved);
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SMARTER ERROR RECOVERY — buildErrorHint
+// ═══════════════════════════════════════════════════════════
+
+function buildErrorHint(toolName, toolArgs, errMsg) {
+  const e = String(errMsg || '').toLowerCase();
+  let hint = '';
+
+  // ── Common Excel API errors ──
+  if (e.includes('cell-editing mode') || e.includes('cell editing mode') || e.includes('edit mode')) {
+    hint = 'RETRY HINT: Excel is in cell-editing mode. Call activate_sheet first to exit edit mode, then retry the operation.';
+  }
+  else if (e.includes('dimension') || e.includes('mismatch') || e.includes('resize') || e.includes('rowcount') || e.includes('columncount')) {
+    hint = 'RETRY HINT: Range dimension mismatch. The values array rows/columns do not match the target range size. ' +
+           'Re-derive the range from the values array: use the top-left cell only and let the code resize. ' +
+           'For write_range, pass only the top-left cell as the range (e.g. "A1" not "A1:D10").';
+  }
+  else if (e.includes('not found') || e.includes('itemnotfound') || e.includes('does not exist')) {
+    if (toolName === 'write_range' || toolName === 'read_range' || toolName === 'format_range') {
+      hint = 'RETRY HINT: Sheet or range not found. Call get_sheet_names first to confirm the exact sheet name, then retry with the correct name.';
+    } else {
+      hint = 'RETRY HINT: Item not found. Verify the sheet name exists by calling get_sheet_names, then retry.';
+    }
+  }
+  else if (e.includes('invalid argument') || e.includes('invalidargument') || e.includes('value is not valid')) {
+    if (toolName === 'create_chart') {
+      hint = 'RETRY HINT: Invalid chart argument. Valid chart types are: bar, column, line, pie, area, scatter. Check seriesBy is "rows" or "columns". Ensure the data range contains at least 2 rows.';
+    } else if (toolName === 'format_range') {
+      hint = 'RETRY HINT: Invalid format argument. Check: fillColor and color must be valid hex strings like "#FF0000". horizontalAlignment must be "Left", "Center", or "Right". fontSize must be a number.';
+    } else if (toolName === 'add_borders') {
+      hint = 'RETRY HINT: Invalid border style. Use style: "Thin", "Medium", or "Thick" — not "thin" or "THIN" (case-sensitive).';
+    } else {
+      hint = 'RETRY HINT: Invalid argument. Check all argument values match the expected types and allowed values described in the tool definition.';
+    }
+  }
+  else if (e.includes('missing required') || (toolArgs && Object.keys(toolArgs).length === 0)) {
+    hint = 'RETRY HINT: Required arguments were missing or empty. You must provide all required parameters for ' + toolName + '. Do not call tools with empty {} arguments.';
+  }
+  else if (e.includes('formula') || e.includes('syntax')) {
+    hint = 'RETRY HINT: Formula syntax error. Check the formula starts with = and uses correct Excel syntax. Avoid using named ranges that may not exist.';
+  }
+  else if (e.includes('generalexception') || e.includes('unknown')) {
+    hint = 'RETRY HINT: Unexpected Excel error. Try a simpler version of this operation — break it into smaller steps or use a different tool.';
+  }
+
+  const base = 'ERROR: ' + errMsg;
+  return hint ? base + '\n' + hint + '\nDo NOT repeat the same call. Try the suggested approach instead.' : base;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FORMULA ASSISTANT MODE
+// ═══════════════════════════════════════════════════════════
+
+let currentMode = 'agent';          // 'agent' | 'formula'
+let lastExtractedFormula = '';      // formula shown in the bar
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-agent').classList.toggle('active', mode === 'agent');
+  document.getElementById('mode-formula').classList.toggle('active', mode === 'formula');
+
+  const input = document.getElementById('user-input');
+  if (mode === 'formula') {
+    input.placeholder = 'Describe what you want to calculate, or paste a formula to explain...';
+    // Clear formula bar on mode switch
+    document.getElementById('formula-bar').classList.remove('show');
+    document.getElementById('formula-bar-value').textContent = '—';
+    lastExtractedFormula = '';
+  } else {
+    input.placeholder = 'Ask the agent to do something in Excel...';
+    document.getElementById('formula-bar').classList.remove('show');
+  }
+}
+
+// Extract the first Excel formula from AI response text
+function extractFormula(text) {
+  var m;
+  // 1. Triple backtick code block
+  m = text.match(/```[\s\S]*?(=[^\n`]+)/);
+  if (m) return m[1].trim();
+
+  // 2. Inline backtick `=FORMULA()`
+  m = text.match(/`(=[^`]+)`/);
+  if (m) return m[1].trim();
+
+  // 3. After "Formula:" label
+  m = text.match(/[Ff]ormula[\s]*:[\s]*(=[^\n]+)/);
+  if (m) return m[1].trim();
+
+  // 4. Bare =SOMETHING( at start of a line
+  m = text.match(/(?:^|\n)(=[A-Z]+\([^\n]*)/);
+  if (m) return m[1].trim();
+
+  return '';
+}
+
+// Single-turn formula AI call — works for all 6 providers via callAI()
+// Read headers from active sheet — detects vertical OR horizontal layout
+async function getSheetHeaderContext() {
+  try {
+    return await Excel.run(async (context) => {
+      const sheet = context.workbook.worksheets.getActiveWorksheet();
+      sheet.load('name');
+      const usedRange = sheet.getUsedRange();
+      usedRange.load(['rowCount','columnCount']);
+      await context.sync();
+      if (!usedRange || usedRange.rowCount === 0) return null;
+
+      const numCols = Math.min(usedRange.columnCount, 30);
+      const numRows = Math.min(usedRange.rowCount, 30);
+      const colLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+      // Read row 1 and column A to detect layout
+      const headerRow = sheet.getRange('A1').getResizedRange(0, numCols - 1);
+      const headerCol = sheet.getRange('A1').getResizedRange(numRows - 1, 0);
+      headerRow.load('values');
+      headerCol.load('values');
+      await context.sync();
+
+      const row1 = headerRow.values[0];
+      const colA = headerCol.values.map(function(r) { return r[0]; });
+
+      // Count non-empty text cells in row 1 vs column A
+      function isText(v) { return v && isNaN(v) && String(v).trim() !== ''; }
+      const row1TextCount = row1.filter(isText).length;
+      const colATextCount = colA.filter(isText).length;
+
+      // VERTICAL layout: headers in row 1 (standard — most common)
+      if (row1TextCount >= colATextCount || row1TextCount >= 2) {
+        const colMap = row1
+          .map(function(h, i) { return h ? colLetters[i] + '=' + String(h).trim() : null; })
+          .filter(Boolean)
+          .join(', ');
+        return {
+          sheetName: sheet.name,
+          layout: 'vertical',
+          contextLine: 'Headers are in ROW 1. Columns: ' + colMap
+        };
+      }
+
+      // HORIZONTAL layout: headers in column A (data goes right across rows)
+      const rowMap = colA
+        .map(function(h, i) { return h ? 'Row ' + (i + 1) + '=' + String(h).trim() : null; })
+        .filter(Boolean)
+        .join(', ');
+      return {
+        sheetName: sheet.name,
+        layout: 'horizontal',
+        contextLine: 'Data is laid out HORIZONTALLY. Headers are in COLUMN A going down. ' +
+          'Rows: ' + rowMap + '. Data expands to the right across columns B, C, D... ' +
+          'Use HLOOKUP, INDEX/MATCH by row, or reference specific row numbers in formulas.'
+      };
+    });
+  } catch(e) {
+    return null;
+  }
+}
+
+async function runFormulaAssistant(userText, sheetContext) {
+  let contextNote = '';
+  if (sheetContext) {
+    contextNote = `\n\nACTIVE SHEET CONTEXT:\nSheet: ${sheetContext.sheetName}\nLayout: ${sheetContext.layout === "horizontal" ? "HORIZONTAL (headers in column A, data goes right)" : "VERTICAL (headers in row 1, data goes down)"}\n${sheetContext.contextLine}\n\nAlways use the correct column letters or row numbers from the context above.`;
+  }
+
+  const formulaSystemPrompt = `You are an expert Microsoft Excel formula assistant.
+Your job is to:
+1. Build Excel formulas from the user's description
+2. Explain what an existing formula does
+3. Fix broken formulas
+
+RULES:
+- ALWAYS show the formula in a code block using triple backticks, e.g.:
+\`\`\`
+=SUMIF(A:A,"Product",B:B)
+\`\`\`
+- After the formula, explain it clearly in plain English (2-4 sentences max)
+- If the user pastes a formula, explain each part step by step
+- If multiple formulas are possible, show the best one first
+- Use modern Excel functions where appropriate: XLOOKUP, FILTER, UNIQUE, LET, SUMPRODUCT
+- Do NOT call any tools — respond with text only${contextNote}`;
+
+  const formulaMessages = [
+    { role: 'system', content: formulaSystemPrompt },
+    { role: 'user', content: userText }
+  ];
+
+  const response = await callAI(formulaMessages, []);
+  return response ? (response.content || '') : '';
+}
+
+async function handleFormulaMode(text) {
+  if (!hasValidConfig()) {
+    addMessage('error', '⚠️ Please configure your AI provider in Settings first.');
+    return;
+  }
+
+  agentRunning = true;
+  sendBtn.style.display = 'none';
+  stopBtn.style.display = 'flex';
+  setStatus('busy');
+  showTyping(true);
+
+  try {
+    // Quickly read header row so AI knows column layout
+    const sheetContext = await getSheetHeaderContext();
+    if (sheetContext) {
+      addMessage('system', `📋 Reading columns from "${sheetContext.sheetName}"...`);
+    }
+    const responseText = await runFormulaAssistant(text, sheetContext);
+
+    if (responseText) {
+      addMessage('agent', responseText);
+
+      // Extract and show formula in the insert bar
+      const formula = extractFormula(responseText);
+      if (formula) {
+        lastExtractedFormula = formula;
+        document.getElementById('formula-bar-value').textContent = formula;
+        document.getElementById('formula-bar').classList.add('show');
+      } else {
+        document.getElementById('formula-bar').classList.remove('show');
+      }
+    } else {
+      addMessage('error', '❌ No response from AI. Check your API key in Settings.');
+    }
+  } catch(e) {
+    addMessage('error', '❌ Formula Assistant error: ' + e.message);
+  }
+
+  showTyping(false);
+  agentRunning = false;
+  sendBtn.style.display = 'flex';
+  stopBtn.style.display = 'none';
+  setStatus('ready');
+}
+
+async function insertFormulaToCell() {
+  if (!lastExtractedFormula) return;
+  try {
+    await Excel.run(async (context) => {
+      const cell = context.workbook.getActiveCell();
+      cell.formulas = [[lastExtractedFormula]];
+      await context.sync();
+    });
+    showNotif('✅ Formula inserted into selected cell!', 'success');
+    addMessage('system', `📥 Inserted into active cell: \`${lastExtractedFormula}\``);
+  } catch(e) {
+    showNotif('❌ Insert failed: ' + e.message, 'fail');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TEMPLATE LIBRARY
+// ═══════════════════════════════════════════════════════════
+
+const TEMPLATES = [
+  {
+    id: 'invoice',
+    name: 'Professional Invoice',
+    icon: '🧾',
+    desc: 'Client invoice with line items, tax, and totals',
+    cat: 'finance',
+    tag: 'Finance',
+    sheetName: 'Invoice',
+    data: [
+      ['INVOICE', '', '', ''],
+      ['', '', '', ''],
+      ['Bill To:', '', 'Invoice #:', '1001'],
+      ['Client Name', '', 'Date:', new Date().toLocaleDateString()],
+      ['Client Address', '', 'Due Date:', ''],
+      ['Client City, State', '', '', ''],
+      ['', '', '', ''],
+      ['Description', 'Qty', 'Unit Price', 'Amount'],
+      ['Service / Product 1', 1, 0, '=C9*B9'],
+      ['Service / Product 2', 1, 0, '=C10*B10'],
+      ['Service / Product 3', 1, 0, '=C11*B11'],
+      ['', '', '', ''],
+      ['', '', 'Subtotal', '=SUM(D9:D11)'],
+      ['', '', 'Tax (10%)', '=D13*0.1'],
+      ['', '', 'TOTAL', '=D13+D14'],
+      ['', '', '', ''],
+      ['Notes:', '', '', ''],
+      ['Thank you for your business!', '', '', ''],
+    ],
+    formats: [
+      { range: 'A1', bold: true, fontSize: 18, color: '#00e5a0' },
+      { range: 'A8:D8', bold: true, fill: '#1c2030' },
+      { range: 'A13:D15', bold: true },
+      { range: 'D15', bold: true, color: '#00e5a0' },
+      { range: 'B9:B11', numberFormat: '0' },
+      { range: 'C9:D15', numberFormat: '"$"#,##0.00' },
+    ]
+  },
+  {
+    id: 'budget',
+    name: 'Monthly Budget Tracker',
+    icon: '💰',
+    desc: 'Income vs expenses tracker with balance summary',
+    cat: 'finance',
+    tag: 'Finance',
+    sheetName: 'Budget',
+    data: [
+      ['MONTHLY BUDGET TRACKER', '', '', ''],
+      ['Month:', new Date().toLocaleString('default',{month:'long'}), '', ''],
+      ['', '', '', ''],
+      ['INCOME', '', '', ''],
+      ['Source', 'Budgeted', 'Actual', 'Difference'],
+      ['Salary', 0, 0, '=C6-B6'],
+      ['Freelance', 0, 0, '=C7-B7'],
+      ['Other Income', 0, 0, '=C8-B8'],
+      ['Total Income', '=SUM(B6:B8)', '=SUM(C6:C8)', '=SUM(D6:D8)'],
+      ['', '', '', ''],
+      ['EXPENSES', '', '', ''],
+      ['Category', 'Budgeted', 'Actual', 'Difference'],
+      ['Rent / Mortgage', 0, 0, '=C13-B13'],
+      ['Utilities', 0, 0, '=C14-B14'],
+      ['Groceries', 0, 0, '=C15-B15'],
+      ['Transport', 0, 0, '=C16-B16'],
+      ['Entertainment', 0, 0, '=C17-B17'],
+      ['Other', 0, 0, '=C18-B18'],
+      ['Total Expenses', '=SUM(B13:B18)', '=SUM(C13:C18)', '=SUM(D13:D18)'],
+      ['', '', '', ''],
+      ['NET BALANCE', '=B9-B19', '=C9-C19', '=D9-D19'],
+    ],
+    formats: [
+      { range: 'A1', bold: true, fontSize: 14, color: '#00e5a0' },
+      { range: 'A4', bold: true, color: '#0099ff' },
+      { range: 'A5:D5', bold: true, fill: '#1c2030' },
+      { range: 'A9:D9', bold: true },
+      { range: 'A11', bold: true, color: '#0099ff' },
+      { range: 'A12:D12', bold: true, fill: '#1c2030' },
+      { range: 'A19:D19', bold: true },
+      { range: 'A21:D21', bold: true, color: '#00e5a0' },
+      { range: 'B6:D21', numberFormat: '"$"#,##0.00' },
+    ]
+  },
+  {
+    id: 'project',
+    name: 'Project Timeline (Gantt)',
+    icon: '📅',
+    desc: 'Task list with start/end dates and status tracking',
+    cat: 'project',
+    tag: 'Project',
+    sheetName: 'Project Plan',
+    data: [
+      ['PROJECT TIMELINE', '', '', '', '', ''],
+      ['Project Name:', 'My Project', '', 'Start Date:', new Date().toLocaleDateString(), ''],
+      ['', '', '', '', '', ''],
+      ['Task', 'Owner', 'Start Date', 'End Date', 'Duration (days)', 'Status'],
+      ['Project Kickoff', 'Team Lead', '', '', '', 'Not Started'],
+      ['Requirements Gathering', 'Analyst', '', '', '', 'Not Started'],
+      ['Design Phase', 'Designer', '', '', '', 'Not Started'],
+      ['Development Sprint 1', 'Developer', '', '', '', 'Not Started'],
+      ['Development Sprint 2', 'Developer', '', '', '', 'Not Started'],
+      ['Testing & QA', 'QA Engineer', '', '', '', 'Not Started'],
+      ['Client Review', 'Team Lead', '', '', '', 'Not Started'],
+      ['Final Delivery', 'Team Lead', '', '', '', 'Not Started'],
+      ['', '', '', '', '', ''],
+      ['STATUS SUMMARY', '', '', '', '', ''],
+      ['Not Started', '=COUNTIF(F5:F12,"Not Started")', '', '', '', ''],
+      ['In Progress', '=COUNTIF(F5:F12,"In Progress")', '', '', '', ''],
+      ['Completed', '=COUNTIF(F5:F12,"Completed")', '', '', '', ''],
+    ],
+    formats: [
+      { range: 'A1', bold: true, fontSize: 14, color: '#00e5a0' },
+      { range: 'A4:F4', bold: true, fill: '#1c2030' },
+      { range: 'A14', bold: true, color: '#0099ff' },
+      { range: 'A15:A17', bold: true },
+    ]
+  },
+  {
+    id: 'sales',
+    name: 'Sales Report',
+    icon: '📈',
+    desc: 'Monthly sales data with rep performance and totals',
+    cat: 'sales',
+    tag: 'Sales',
+    sheetName: 'Sales Report',
+    data: [
+      ['SALES REPORT', '', '', '', ''],
+      ['Period:', new Date().toLocaleString('default',{month:'long',year:'numeric'}), '', '', ''],
+      ['', '', '', '', ''],
+      ['Sales Rep', 'Region', 'Target', 'Actual', 'Achievement %'],
+      ['Alice Johnson', 'North', 50000, 0, '=IF(C5=0,0,D5/C5)'],
+      ['Bob Smith', 'South', 45000, 0, '=IF(C6=0,0,D6/C6)'],
+      ['Carol White', 'East', 55000, 0, '=IF(C7=0,0,D7/C7)'],
+      ['David Brown', 'West', 48000, 0, '=IF(C8=0,0,D8/C8)'],
+      ['Emma Davis', 'Central', 52000, 0, '=IF(C9=0,0,D9/C9)'],
+      ['', '', '', '', ''],
+      ['TOTALS', '', '=SUM(C5:C9)', '=SUM(D5:D9)', '=IF(C11=0,0,D11/C11)'],
+      ['', '', '', '', ''],
+      ['TOP PERFORMER', '=INDEX(A5:A9,MATCH(MAX(D5:D9),D5:D9,0))', '', '', ''],
+      ['HIGHEST ACHIEVEMENT', '=MAX(E5:E9)', '', '', ''],
+    ],
+    formats: [
+      { range: 'A1', bold: true, fontSize: 14, color: '#00e5a0' },
+      { range: 'A4:E4', bold: true, fill: '#1c2030' },
+      { range: 'A11:E11', bold: true },
+      { range: 'A13:A14', bold: true, color: '#0099ff' },
+      { range: 'C5:D11', numberFormat: '"$"#,##0' },
+      { range: 'E5:E11', numberFormat: '0.0%' },
+      { range: 'B14', numberFormat: '0.0%' },
+    ]
+  },
+  {
+    id: 'expense',
+    name: 'Expense Tracker',
+    icon: '🧳',
+    desc: 'Log business expenses by category with running totals',
+    cat: 'finance',
+    tag: 'Finance',
+    sheetName: 'Expenses',
+    data: [
+      ['EXPENSE TRACKER', '', '', '', ''],
+      ['Name:', '', 'Month:', new Date().toLocaleString('default',{month:'long'}), ''],
+      ['', '', '', '', ''],
+      ['Date', 'Description', 'Category', 'Amount', 'Receipt?'],
+      ['', '', 'Meals', 0, 'No'],
+      ['', '', 'Travel', 0, 'No'],
+      ['', '', 'Accommodation', 0, 'No'],
+      ['', '', 'Office Supplies', 0, 'No'],
+      ['', '', 'Software / Tools', 0, 'No'],
+      ['', '', 'Other', 0, 'No'],
+      ['', '', '', '', ''],
+      ['', '', 'TOTAL', '=SUM(D5:D10)', ''],
+      ['', '', '', '', ''],
+      ['BY CATEGORY', '', '', '', ''],
+      ['Meals', '=SUMIF(C5:C10,"Meals",D5:D10)', '', '', ''],
+      ['Travel', '=SUMIF(C5:C10,"Travel",D5:D10)', '', '', ''],
+      ['Accommodation', '=SUMIF(C5:C10,"Accommodation",D5:D10)', '', '', ''],
+      ['Office Supplies', '=SUMIF(C5:C10,"Office Supplies",D5:D10)', '', '', ''],
+      ['Software / Tools', '=SUMIF(C5:C10,"Software / Tools",D5:D10)', '', '', ''],
+      ['Other', '=SUMIF(C5:C10,"Other",D5:D10)', '', '', ''],
+    ],
+    formats: [
+      { range: 'A1', bold: true, fontSize: 14, color: '#00e5a0' },
+      { range: 'A4:E4', bold: true, fill: '#1c2030' },
+      { range: 'C12:D12', bold: true },
+      { range: 'A14', bold: true, color: '#0099ff' },
+      { range: 'D5:D12', numberFormat: '"$"#,##0.00' },
+      { range: 'B15:B20', numberFormat: '"$"#,##0.00' },
+    ]
+  },
+  {
+    id: 'kpi',
+    name: 'KPI Dashboard',
+    icon: '🎯',
+    desc: 'Key metrics dashboard with targets and trend indicators',
+    cat: 'operations',
+    tag: 'Operations',
+    sheetName: 'KPI Dashboard',
+    data: [
+      ['KPI DASHBOARD', '', '', '', ''],
+      ['Department:', 'Operations', 'Period:', new Date().toLocaleString('default',{month:'long',year:'numeric'}), ''],
+      ['', '', '', '', ''],
+      ['KPI', 'Target', 'Actual', 'Status', 'Notes'],
+      ['Revenue', 100000, 0, '=IF(C5>=B5,"✅ On Track","⚠️ Below Target")', ''],
+      ['New Customers', 50, 0, '=IF(C6>=B6,"✅ On Track","⚠️ Below Target")', ''],
+      ['Customer Satisfaction (%)', 90, 0, '=IF(C7>=B7,"✅ On Track","⚠️ Below Target")', ''],
+      ['Support Tickets Resolved (%)', 95, 0, '=IF(C8>=B8,"✅ On Track","⚠️ Below Target")', ''],
+      ['Employee Utilization (%)', 80, 0, '=IF(C9>=B9,"✅ On Track","⚠️ Below Target")', ''],
+      ['Cost per Unit', 25, 0, '=IF(C10<=B10,"✅ On Track","⚠️ Above Target")', ''],
+      ['', '', '', '', ''],
+      ['SUMMARY', '', '', '', ''],
+      ['On Track', '=COUNTIF(D5:D10,"✅ On Track")', '', '', ''],
+      ['Below Target', '=COUNTIF(D5:D10,"⚠️*")', '', '', ''],
+    ],
+    formats: [
+      { range: 'A1', bold: true, fontSize: 14, color: '#00e5a0' },
+      { range: 'A4:E4', bold: true, fill: '#1c2030' },
+      { range: 'A12', bold: true, color: '#0099ff' },
+      { range: 'A13:A14', bold: true },
+      { range: 'B5:C10', numberFormat: '#,##0' },
+    ]
+  },
+  {
+    id: 'hr',
+    name: 'Employee Leave Tracker',
+    icon: '👥',
+    desc: 'Track annual leave, sick days and remaining balances per employee',
+    cat: 'hr',
+    tag: 'HR',
+    sheetName: 'Leave Tracker',
+    data: [
+      ['EMPLOYEE LEAVE TRACKER', '', '', '', '', ''],
+      ['Year:', new Date().getFullYear(), '', '', '', ''],
+      ['', '', '', '', '', ''],
+      ['Employee', 'Department', 'Annual Leave Allowance', 'Annual Used', 'Sick Days Used', 'Remaining Leave'],
+      ['', '', 21, 0, 0, '=C5-D5'],
+      ['', '', 21, 0, 0, '=C6-D6'],
+      ['', '', 21, 0, 0, '=C7-D7'],
+      ['', '', 21, 0, 0, '=C8-D8'],
+      ['', '', 21, 0, 0, '=C9-D9'],
+      ['', '', 21, 0, 0, '=C10-D10'],
+      ['', '', '', '', '', ''],
+      ['TOTALS', '', '=SUM(C5:C10)', '=SUM(D5:D10)', '=SUM(E5:E10)', '=SUM(F5:F10)'],
+    ],
+    formats: [
+      { range: 'A1', bold: true, fontSize: 14, color: '#00e5a0' },
+      { range: 'A4:F4', bold: true, fill: '#1c2030' },
+      { range: 'A12:F12', bold: true },
+    ]
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory Manager',
+    icon: '📦',
+    desc: 'Product stock levels with reorder alerts and valuation',
+    cat: 'operations',
+    tag: 'Operations',
+    sheetName: 'Inventory',
+    data: [
+      ['INVENTORY MANAGER', '', '', '', '', ''],
+      ['Last Updated:', new Date().toLocaleDateString(), '', '', '', ''],
+      ['', '', '', '', '', ''],
+      ['Product Name', 'SKU', 'Category', 'Stock Qty', 'Reorder Level', 'Unit Cost', 'Total Value', 'Status'],
+      ['', '', '', 0, 10, 0, '=D5*F5', '=IF(D5<=E5,"🔴 Reorder","✅ OK")'],
+      ['', '', '', 0, 10, 0, '=D6*F6', '=IF(D6<=E6,"🔴 Reorder","✅ OK")'],
+      ['', '', '', 0, 10, 0, '=D7*F7', '=IF(D7<=E7,"🔴 Reorder","✅ OK")'],
+      ['', '', '', 0, 10, 0, '=D8*F8', '=IF(D8<=E8,"🔴 Reorder","✅ OK")'],
+      ['', '', '', 0, 10, 0, '=D9*F9', '=IF(D9<=E9,"🔴 Reorder","✅ OK")'],
+      ['', '', '', 0, 10, 0, '=D10*F10', '=IF(D10<=E10,"🔴 Reorder","✅ OK")'],
+      ['', '', '', '', '', '', '', ''],
+      ['TOTALS', '', '', '=SUM(D5:D10)', '', '', '=SUM(G5:G10)', ''],
+      ['', '', '', '', '', '', '', ''],
+      ['Items Needing Reorder', '=COUNTIF(H5:H10,"🔴 Reorder")', '', '', '', '', '', ''],
+    ],
+    formats: [
+      { range: 'A1', bold: true, fontSize: 14, color: '#00e5a0' },
+      { range: 'A4:H4', bold: true, fill: '#1c2030' },
+      { range: 'A12:H12', bold: true },
+      { range: 'A14', bold: true, color: '#ff4d6d' },
+      { range: 'F5:G12', numberFormat: '"$"#,##0.00' },
+    ]
+  }
+];
+
+let tplCurrentCat = 'all';
+
+function openTemplates() {
+  document.getElementById('tpl-overlay').classList.add('show');
+  renderTemplateGrid(tplCurrentCat);
+}
+
+function closeTemplates() {
+  document.getElementById('tpl-overlay').classList.remove('show');
+}
+
+function renderTemplateGrid(cat) {
+  const grid = document.getElementById('tpl-grid');
+  const filtered = cat === 'all' ? TEMPLATES : TEMPLATES.filter(t => t.cat === cat);
+  grid.innerHTML = filtered.map(t => `
+    <div class="tpl-card" onclick="insertTemplate('${t.id}')">
+      <div class="tpl-card-icon">${t.icon}</div>
+      <div class="tpl-card-info">
+        <div class="tpl-card-name">${t.name}</div>
+        <div class="tpl-card-desc">${t.desc}</div>
+      </div>
+      <div class="tpl-card-tag">${t.tag}</div>
+    </div>
+  `).join('');
+}
+
+// Wire up category filter buttons
+document.getElementById('tpl-cats').addEventListener('click', function(e) {
+  const btn = e.target.closest('.tpl-cat');
+  if (!btn) return;
+  document.querySelectorAll('.tpl-cat').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  tplCurrentCat = btn.dataset.cat;
+  renderTemplateGrid(tplCurrentCat);
+});
+
+async function insertTemplate(id) {
+  const tpl = TEMPLATES.find(t => t.id === id);
+  if (!tpl) return;
+
+  const inserting = document.getElementById('tpl-inserting');
+  inserting.classList.add('show');
+  document.querySelectorAll('.tpl-card').forEach(c => c.style.pointerEvents = 'none');
+
+  try {
+    await Excel.run(async (context) => {
+      // Add a new sheet with the template name (avoid duplicates)
+      let sheetName = tpl.sheetName;
+      const sheets = context.workbook.worksheets;
+      sheets.load('items/name');
+      await context.sync();
+      const existing = sheets.items.map(s => s.name);
+      let counter = 1;
+      while (existing.includes(sheetName)) {
+        sheetName = tpl.sheetName + ' ' + counter++;
+      }
+
+      const sheet = sheets.add(sheetName);
+      sheet.activate();
+
+      // Write data
+      const numRows = tpl.data.length;
+      const numCols = tpl.data.reduce((m, r) => Math.max(m, r.length), 0);
+      // Pad jagged rows
+      const paddedData = tpl.data.map(r => {
+        const row = r.map(cell => (cell === null || cell === undefined) ? '' : cell);
+        while (row.length < numCols) row.push('');
+        return row;
+      });
+
+      const dataRange = sheet.getRange('A1').getResizedRange(numRows - 1, numCols - 1);
+      dataRange.values = paddedData;
+
+      // Apply basic formatting
+      // Column widths
+      sheet.getRange('A:A').columnWidth = 160;
+      sheet.getRange('B:B').columnWidth = 110;
+      sheet.getRange('C:C').columnWidth = 110;
+      sheet.getRange('D:D').columnWidth = 100;
+      if (numCols > 4) sheet.getRange('E:E').columnWidth = 100;
+      if (numCols > 5) sheet.getRange('F:F').columnWidth = 100;
+      if (numCols > 6) sheet.getRange('G:G').columnWidth = 100;
+      if (numCols > 7) sheet.getRange('H:H').columnWidth = 80;
+
+      // Apply per-cell format overrides
+      for (const fmt of (tpl.formats || [])) {
+        const r = sheet.getRange(fmt.range);
+        if (fmt.bold !== undefined) r.format.font.bold = fmt.bold;
+        if (fmt.fontSize) r.format.font.size = fmt.fontSize;
+        if (fmt.color) r.format.font.color = fmt.color;
+        if (fmt.fill) r.format.fill.color = fmt.fill;
+        if (fmt.numberFormat) r.numberFormat = fmt.numberFormat;
+      }
+
+      // Auto-fit rows
+      sheet.getUsedRange().format.autofitRows();
+
+      await context.sync();
+    });
+
+    closeTemplates();
+    showNotif(`✅ "${tpl.name}" inserted as new sheet!`, 'success');
+    addMessage('system', `📋 Template inserted: **${tpl.name}** → Sheet "${tpl.sheetName}"
+
+Fill in the highlighted cells and the formulas will calculate automatically.`);
+
+  } catch(e) {
+    showNotif('❌ Insert failed: ' + e.message, 'fail');
+  } finally {
+    inserting.classList.remove('show');
+    document.querySelectorAll('.tpl-card').forEach(c => c.style.pointerEvents = '');
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════
+// PRO: Auth, Usage, Upgrade, Arabic support
+// ════════════════════════════════════════════════════════════
+
+var PRO_BACKEND_URL = 'https://excel-ai-pro-backend.replit.app';
+
+// ── Login screen ──────────────────────────────────────────────
+function showLoginScreen() {
+  var ls = document.getElementById('login-screen');
+  if (ls) ls.classList.remove('hidden');
+}
+
+function hideLoginScreen() {
+  var ls = document.getElementById('login-screen');
+  if (ls) ls.classList.add('hidden');
+}
+
+function switchLoginTab(tab) {
+  var isRegister = tab === 'register';
+  document.getElementById('ltab-login').classList.toggle('active', !isRegister);
+  document.getElementById('ltab-register').classList.toggle('active', isRegister);
+  document.getElementById('login-confirm-row').style.display = isRegister ? 'block' : 'none';
+  document.getElementById('login-submit-btn').textContent = isRegister ? 'Create Account' : 'Sign In';
+  document.getElementById('login-submit-btn').onclick = isRegister ? doRegister : doLogin;
+  document.getElementById('login-error').textContent = '';
+}
+
+async function doLogin() {
+  var email = document.getElementById('login-email').value.trim();
+  var password = document.getElementById('login-password').value;
+  var errEl = document.getElementById('login-error');
+  var btn = document.getElementById('login-submit-btn');
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+  btn.textContent = 'Signing in...'; btn.disabled = true; errEl.textContent = '';
+  try {
+    var res = await fetch(PRO_BACKEND_URL + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    });
+    var data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Login failed.'; btn.textContent = 'Sign In'; btn.disabled = false; return; }
+    storage.setItem('pro_token', data.token);
+    storage.setItem('pro_email', data.user.email);
+    hideLoginScreen();
+    refreshUsagePill();
+    addMessage('system', 'Welcome back, ' + data.user.email + '! Ready to work.');
+  } catch(e) {
+    errEl.textContent = 'Connection error. Check your internet and try again.';
+  }
+  btn.textContent = 'Sign In'; btn.disabled = false;
+}
+
+async function doRegister() {
+  var email = document.getElementById('login-email').value.trim();
+  var password = document.getElementById('login-password').value;
+  var confirm = document.getElementById('login-confirm').value;
+  var errEl = document.getElementById('login-error');
+  var btn = document.getElementById('login-submit-btn');
+  if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+  if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; return; }
+  if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  btn.textContent = 'Creating account...'; btn.disabled = true; errEl.textContent = '';
+  try {
+    var res = await fetch(PRO_BACKEND_URL + '/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    });
+    var data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Registration failed.'; btn.textContent = 'Create Account'; btn.disabled = false; return; }
+    storage.setItem('pro_token', data.token);
+    storage.setItem('pro_email', data.user.email);
+    hideLoginScreen();
+    refreshUsagePill();
+    addMessage('system', 'Account created! You have 50 free requests to get started. Welcome!');
+  } catch(e) {
+    errEl.textContent = 'Connection error. Check your internet and try again.';
+  }
+  btn.textContent = 'Create Account'; btn.disabled = false;
+}
+
+// ── Usage pill ────────────────────────────────────────────────
+async function refreshUsagePill() {
+  var token = storage.getItem('pro_token');
+  if (!token) return;
+  try {
+    var res = await fetch(PRO_BACKEND_URL + '/api/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) return;
+    var data = await res.json();
+    var pill = document.getElementById('usage-pill');
+    if (!pill) return;
+    if (data.is_pro) {
+      pill.textContent = '★ Pro';
+      pill.className = 'pro';
+      pill.style.cursor = 'default';
+      pill.onclick = null;
+    } else {
+      var remaining = data.remaining;
+      pill.textContent = remaining + ' free left';
+      pill.onclick = function() { showUpgradeModal(data.checkout_url); };
+      if (remaining <= 0) {
+        pill.className = 'danger';
+        showUpgradeModal(data.checkout_url);
+      } else if (remaining <= 10) {
+        pill.className = 'warning';
+      } else {
+        pill.className = '';
+      }
+    }
+  } catch(e) { /* ignore */ }
+}
+
+// ── Upgrade modal ─────────────────────────────────────────────
+function showUpgradeModal(checkoutUrl) {
+  var modal = document.getElementById('upgrade-modal');
+  var link = document.getElementById('upgrade-checkout-link');
+  if (checkoutUrl && link) link.href = checkoutUrl;
+  if (modal) modal.classList.add('show');
+}
+
+function closeUpgradeModal() {
+  var modal = document.getElementById('upgrade-modal');
+  if (modal) modal.classList.remove('show');
+}
+
+// ── Logout (add to settings tab) ──────────────────────────────
+function logoutPro() {
+  storage.setItem('pro_token', '');
+  storage.setItem('pro_email', '');
+  showLoginScreen();
+  addMessage('system', 'Logged out.');
+}
+
+// ── Arabic language support ────────────────────────────────────
+// Detect if text contains Arabic characters
+function containsArabic(text) {
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(text);
+}
+
+// Auto-apply RTL alignment when writing Arabic content to cells
+var _origWriteRange = null;
+// Patched inside executeTool after write_range to check for Arabic values
+// The system prompt handles language direction instructions
+
+// Patch: after write_range with Arabic values, auto-format RTL
+function isArabicValues(values) {
+  if (!Array.isArray(values)) return false;
+  for (var r = 0; r < values.length; r++) {
+    for (var c = 0; c < values[r].length; c++) {
+      if (containsArabic(String(values[r][c] || ''))) return true;
+    }
+  }
+  return false;
+}
+</script>
+
+<!-- Template Library Modal — direct body child to avoid WebView2 hit-area issues -->
+<div class="tpl-overlay" id="tpl-overlay" onclick="if(event.target===this)closeTemplates()">
+  <div class="tpl-modal">
+    <div class="tpl-header">
+      <span class="tpl-title">📋 Template Library</span>
+      <button class="tpl-close" onclick="closeTemplates()">✕</button>
+    </div>
+    <div class="tpl-cats" id="tpl-cats">
+      <div class="tpl-cat active" data-cat="all">All</div>
+      <div class="tpl-cat" data-cat="finance">Finance</div>
+      <div class="tpl-cat" data-cat="project">Project</div>
+      <div class="tpl-cat" data-cat="sales">Sales</div>
+      <div class="tpl-cat" data-cat="hr">HR</div>
+      <div class="tpl-cat" data-cat="operations">Operations</div>
+    </div>
+    <div class="tpl-grid" id="tpl-grid"></div>
+    <div class="tpl-inserting" id="tpl-inserting">
+      <span>⚡</span> <span>Inserting template...</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── PRO: Login screen ── -->
+<div id="login-screen">
+  <div class="login-logo">✦ Shayntech Excel AI</div>
+  <div class="login-tagline">Pro — Powered by Qwen AI</div>
+  <div class="login-box">
+    <div class="login-tab-row">
+      <button class="login-tab active" id="ltab-login" onclick="switchLoginTab('login')">Sign In</button>
+      <button class="login-tab" id="ltab-register" onclick="switchLoginTab('register')">Create Account</button>
+    </div>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email"/>
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <div id="login-confirm-row" class="login-field" style="display:none;">
+      <label>Confirm Password</label>
+      <input type="password" id="login-confirm" placeholder="••••••••"/>
+    </div>
+    <button class="login-submit" id="login-submit-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ── PRO: Upgrade modal ── -->
+<div id="upgrade-modal">
+  <div class="upgrade-card">
+    <h2>🚀 Upgrade to Pro</h2>
+    <p>You've used all 50 free requests.<br/>Upgrade to continue with unlimited access and premium Qwen AI.</p>
+    <div class="upgrade-price">$8.99 <span>/ month</span></div>
+    <a id="upgrade-checkout-link" href="#" target="_blank" class="upgrade-btn">Upgrade Now →</a>
+    <button class="upgrade-close" onclick="closeUpgradeModal()">Maybe later</button>
+  </div>
+</div>
+
+</body>
+</html>
