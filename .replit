@@ -1,0 +1,6 @@
+run = "cd backend && node server.js"
+entrypoint = "backend/server.js"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
