@@ -1,5 +1,6 @@
-run = "npm install && npm start"
+run = "node server.js"
 entrypoint = "server.js"
 
-[env]
-PORT = "3000"
+[[ports]]
+localPort = 3000
+ext
