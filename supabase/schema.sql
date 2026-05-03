@@ -1,11 +1,11 @@
 -- ============================================================
 -- Shayntech Excel AI Pro — Supabase Database Schema
--- Run this in: Supabase Dashboard → SQL Editor → New Query
+-- Safe to run multiple times (idempotent)
 -- ============================================================
 
 -- Profiles table (one row per user)
 CREATE TABLE IF NOT EXISTS profiles (
-  id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  id                     UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email                  TEXT,
   lifetime_usage         INTEGER DEFAULT 0,
   is_pro                 BOOLEAN DEFAULT FALSE,
@@ -23,41 +23,37 @@ CREATE TABLE IF NOT EXISTS pending_activations (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Auto-update updated_at on profiles
+-- ── FIX 1: search_path set explicitly to prevent Supabase security warning ──
 CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
+-- ── FIX 2: DROP TRIGGER IF EXISTS before CREATE to avoid "already exists" warning ──
+DROP TRIGGER IF EXISTS profiles_updated_at ON profiles;
 CREATE TRIGGER profiles_updated_at
   BEFORE UPDATE ON profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- Row Level Security: users can only read their own profile
+-- Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- Service role (backend) bypasses RLS automatically
--- These policies are for the anon/authenticated roles if you use them
+-- ── FIX 3: DROP POLICY IF EXISTS before CREATE to avoid duplicate policy warning ──
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id);
 
--- ============================================================
--- Optional: view for easy monitoring in Supabase dashboard
--- ============================================================
-CREATE OR REPLACE VIEW user_stats AS
-SELECT
-  p.email,
-  p.lifetime_usage,
-  p.is_pro,
-  p.lemon_subscription_id,
-  p.created_at
-FROM profiles p
-ORDER BY p.created_at DESC;
+-- ── FIX 4: security_invoker = true so view respects RLS (Supaba
