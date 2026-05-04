@@ -3881,8 +3881,47 @@ ${workbookText}${fileContent ? `\n\nATTACHED FILE: ${fileName}\n${'─'.repeat(4
         break;
       }
 
-      // Show the action being taken
-      addMessage('tool-call', `⚡ ${toolName}(${JSON.stringify(toolArgs, null, 0).slice(0, 120)}...)`);
+      // Show friendly status message instead of raw tool call
+      const _friendlyMsg = {
+        read_range:        '📖 Reading data...',
+        get_sheet_names:   '📋 Getting sheet names...',
+        write_range:       '✏️ Writing data...',
+        set_formula:       '🔢 Setting formula...',
+        set_formulas_range:'🔢 Setting formulas...',
+        format_range:      '🎨 Formatting cells...',
+        add_borders:       '🔲 Adding borders...',
+        merge_cells:       '⬛ Merging cells...',
+        auto_fit:          '↔️ Auto-fitting columns...',
+        freeze_panes:      '🔒 Freezing header...',
+        insert_rows:       '➕ Inserting rows...',
+        delete_rows:       '➖ Deleting rows...',
+        insert_columns:    '➕ Inserting columns...',
+        delete_columns:    '➖ Deleting columns...',
+        create_chart:      '📊 Creating chart...',
+        add_sheet:         '📄 Adding sheet...',
+        rename_sheet:      '✏️ Renaming sheet...',
+        delete_sheet:      '🗑️ Deleting sheet...',
+        activate_sheet:    '👆 Switching sheet...',
+        sort_range:        '🔃 Sorting data...',
+        find_replace:      '🔍 Finding & replacing...',
+        conditional_format:'🎨 Applying conditional format...',
+        formula_conditional_format: '🎨 Applying formula format...',
+        clean_data:        '🧹 Cleaning data...',
+        analyze_data:      '🔬 Analyzing data...',
+        highlight_outliers:'🔴 Highlighting outliers...',
+        add_data_validation:'✅ Adding validation...',
+        protect_sheet:     '🔐 Protecting sheet...',
+        unprotect_sheet:   '🔓 Unprotecting sheet...',
+        smart_fill:        '✨ Smart filling...',
+        clear_range:       '🗑️ Clearing cells...',
+        save_memory:       '💾 Saving preferences...',
+        get_memory:        '🧠 Loading preferences...',
+        apply_to_all_sheets:'📑 Applying to all sheets...',
+        undo_last_action:  '↩️ Undoing last action...',
+        task_complete:     '✅ Completing task...'
+      };
+      const _statusMsg = _friendlyMsg[toolName] || ('⚙️ ' + toolName.replace(/_/g,' ') + '...');
+      addMessage('tool-call', _statusMsg);
 
       let toolResult = '';
       try {
