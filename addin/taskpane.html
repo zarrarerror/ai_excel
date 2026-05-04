@@ -1736,16 +1736,13 @@ setTimeout(function() {
 }, 2000);
 
 function hasValidConfig() {
-  const p = cfg.provider;
-  if (p === 'openrouter') return !!cfg.or.key && !!cfg.or.model;
-  // PRO: always configured (backend handles auth)
-  if (p === 'pro') return !!storage.getItem('pro_token');
-  if (p === 'gemini')     return !!cfg.gm?.key && !!cfg.gm?.model;
-  if (p === 'groq')       return !!cfg.gq?.key && !!cfg.gq?.model;
-  if (p === 'claude')     return !!cfg.cl?.key && !!cfg.cl?.model;
-  if (p === 'qwen')       return !!cfg.qw.key && !!cfg.qw.model;
-  if (p === 'ollama')     return !!cfg.ol.url && !!cfg.ol.model;
-  return false;
+  // PRO version: valid if user is logged in (has token)
+  var token = storage.getItem('pro_token');
+  if (!token) {
+    showLoginScreen();
+    return false;
+  }
+  return true;
 }
 
 // ═══════════════════════════════════════════════════════════════
