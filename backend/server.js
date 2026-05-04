@@ -1,24 +1,14 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// CORS — allow requests from the add-in
-const allowedOrigins = [
-  process.env.ADDIN_ORIGIN,
-  'https://excel-ai-pro.replit.app',
-  'https://excelai.replit.app',
-  'null', // Office add-ins sometimes send null origin
-  'https://localhost:3000'
-].filter(Boolean);
+const PORT = process.env.PORT || 5000;
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (e.g. Office add-ins, Postman)
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error('Not allowed by CORS'));
+    return callback(null, true);
   },
   credentials: true
 }));
@@ -30,7 +20,7 @@ app.use('/api/webhook', webhookRouter);
 // JSON middleware for all other routes
 app.use(express.json({ limit: '2mb' }));
 
-// Routes
+// API Routes
 const authRouter = require('./routes/auth');
 const chatRouter = require('./routes/chat');
 
@@ -42,9 +32,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0', service: 'Shayntech Excel AI Pro' });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found.' });
+// Serve the Excel add-in frontend
+app.use(express.static(path.join(__dirname, '../addin')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../addin', 'taskpane.html'));
 });
 
 // Global error handler
