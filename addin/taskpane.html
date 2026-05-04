@@ -829,6 +829,21 @@
 .upgrade-close { background: transparent; border: none; color: var(--muted);
   font-size: 11px; cursor: pointer; margin-top: 10px; text-decoration: underline; }
 
+
+/* ── Language Toggle ── */
+.lang-toggle {
+  display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+}
+.lang-btn {
+  font-size: 10px; font-weight: 700; padding: 3px 7px;
+  border-radius: 4px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: all 0.15s; font-family: var(--font-body);
+}
+.lang-btn.active {
+  background: var(--accent); border-color: var(--accent);
+  color: #000;
+}
 </style>
 </head>
 <body>
@@ -840,6 +855,10 @@
     <span class="brand-tag">AI Agent</span>
   </div>
   <span id="usage-pill" onclick="showUpgradeModal()" title="Click to upgrade">50 free left</span>
+  <div class="lang-toggle">
+    <button class="lang-btn active" id="lang-en" onclick="setLanguage('en')">EN</button>
+    <button class="lang-btn" id="lang-ar" onclick="setLanguage('ar')">ع</button>
+  </div>
   <div id="status-dot" class="status-dot"></div>
 </div>
 
@@ -3604,19 +3623,18 @@ async function runAgent(userCommand, fileContent, fileName) {
   }
 
   // 2. Build system prompt
+  const langLabel = _userLanguage === 'ar' ? 'Arabic (العربية)' : 'English';
   const systemPrompt = `You are an elite Excel AI Agent built by Shayntech. You are a professional data analyst and spreadsheet designer who creates beautiful, publication-quality workbooks.
 
 ═══════════════════════════════════════
 AVAILABLE TOOLS
 ═══════════════════════════════════════
-ARABIC & MULTILINGUAL RULES
+LANGUAGE RULES
 ═══════════════════════════════════════
-1. Detect the user's language from their message.
-2. If the user writes in Arabic, respond ENTIRELY in Arabic — all explanations, plan steps, tool call reasoning, and task_complete messages must be in Arabic.
-3. Never mix English and Arabic in the same response.
-4. When writing Arabic text into Excel cells via write_range, the values will be RTL — always follow up with format_range using horizontalAlignment:'Right' on those cells.
-5. Arabic column headers should also be Right-aligned.
-6. If the user switches language mid-conversation, switch your response language to match immediately.
+1. The user has selected their preferred language: ${langLabel}. Respond ENTIRELY in that language — all explanations, plan steps, tool call reasoning, and task_complete messages.
+2. Never mix English and Arabic in the same response.
+3. When writing Arabic text into Excel cells via write_range, the values will be RTL — always follow up with format_range using horizontalAlignment:'Right' on those cells.
+4. Arabic column headers should also be Right-aligned.
 
 ═══════════════════════════════════════
 DATA:         write_range, read_range, find_replace
@@ -4729,6 +4747,22 @@ function logoutPro() {
   showLoginScreen();
   addMessage('system', 'Logged out.');
 }
+
+// ── Language toggle ────────────────────────────────────────────
+var _userLanguage = storage.getItem('lang') || 'en';
+
+function setLanguage(lang) {
+  _userLanguage = lang;
+  storage.setItem('lang', lang);
+  document.getElementById('lang-en').className = 'lang-btn' + (lang === 'en' ? ' active' : '');
+  document.getElementById('lang-ar').className = 'lang-btn' + (lang === 'ar' ? ' active' : '');
+}
+
+// Init toggle state on load
+(function() {
+  var saved = storage.getItem('lang') || 'en';
+  setLanguage(saved);
+})();
 
 // ── Arabic language support ────────────────────────────────────
 // Detect if text contains Arabic characters
