@@ -141,7 +141,8 @@ async function callModel(model, messages, tools, toolChoice) {
   const data = await res.json();
 
   if (!res.ok && res.status === 400 && tools && tools.length > 0) {
-    console.warn(`[${model}] tool call rejected, retrying without tools`);
+    console.warn(`[${model}] tool call rejected (400). OpenAI error:`, JSON.stringify(data).slice(0,300));
+    console.warn(`[${model}] retrying without tools`);
     const retry = await fetch(url, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
@@ -151,7 +152,8 @@ async function callModel(model, messages, tools, toolChoice) {
   }
 
   if (!res.ok && model !== MODELS.heavy) {
-    console.warn(`[${model}] failed (${res.status}), escalating to ${MODELS.heavy}`);
+    console.warn(`[${model}] failed (${res.status}). Error:`, JSON.stringify(data).slice(0,200));
+    console.warn(`[${model}] escalating to ${MODELS.heavy}`);
     return callModel(MODELS.heavy, messages, tools, toolChoice);
   }
 
