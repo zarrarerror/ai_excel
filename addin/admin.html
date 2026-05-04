@@ -2,74 +2,92 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Shayntech Admin</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',sans-serif;background:#0d0f14;color:#e8eaf0;min-height:100vh}
-  .topbar{background:#14171f;border-bottom:1px solid #2a2f42;padding:14px 28px;display:flex;align-items:center;justify-content:space-between}
-  .topbar h1{font-size:18px;font-weight:700;background:linear-gradient(90deg,#00e5a0,#0099ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-  .topbar span{font-size:12px;color:#6b7280}
-  .login-box{max-width:380px;margin:100px auto;background:#14171f;border:1px solid #2a2f42;border-radius:14px;padding:32px}
-  .login-box h2{margin-bottom:20px;font-size:16px;color:#e8eaf0}
-  input{width:100%;padding:10px 14px;background:#1c2030;border:1px solid #2a2f42;border-radius:8px;color:#e8eaf0;font-size:14px;margin-bottom:14px;outline:none}
-  input:focus{border-color:#00e5a0}
-  button{width:100%;padding:11px;background:#00e5a0;color:#000;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer}
-  button:hover{background:#00c98a}
-  .err{color:#ff4d6d;font-size:13px;margin-bottom:10px}
-  .main{padding:28px;max-width:1100px;margin:0 auto}
-  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px}
-  .stat-card{background:#14171f;border:1px solid #2a2f42;border-radius:12px;padding:20px 22px}
-  .stat-card .label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-  .stat-card .value{font-size:28px;font-weight:800;color:#00e5a0}
-  .stat-card.blue .value{color:#0099ff}
-  .stat-card.amber .value{color:#f59e0b}
-  .stat-card.red .value{color:#ef4444}
-  .stat-card.purple .value{color:#a78bfa}
-  .section-title{font-size:14px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px}
-  .table-wrap{background:#14171f;border:1px solid #2a2f42;border-radius:12px;overflow:hidden;margin-bottom:28px}
-  table{width:100%;border-collapse:collapse}
-  thead th{background:#1c2030;padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #2a2f42}
-  tbody tr{border-bottom:1px solid #1c2030;transition:background .15s}
-  tbody tr:last-child{border-bottom:none}
-  tbody tr:hover{background:#1a1f2e}
-  tbody td{padding:11px 16px;font-size:13px;color:#c9cbd4}
-  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
-  .badge.pro{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid #22c55e}
-  .badge.free{background:rgba(107,114,128,.12);color:#6b7280;border:1px solid #374151}
-  .usage-bar{height:6px;background:#1c2030;border-radius:3px;min-width:80px;overflow:hidden}
-  .usage-bar-fill{height:100%;border-radius:3px;background:#00e5a0;transition:width .4s}
-  .usage-bar-fill.warn{background:#f59e0b}
-  .usage-bar-fill.danger{background:#ef4444}
-  .search-row{display:flex;gap:10px;margin-bottom:16px}
-  .search-row input{margin:0;flex:1;max-width:320px}
-  .refresh-btn{padding:8px 16px;background:transparent;border:1px solid #2a2f42;border-radius:8px;color:#e8eaf0;font-size:13px;width:auto;cursor:pointer}
-  .refresh-btn:hover{border-color:#00e5a0;color:#00e5a0;background:transparent}
-  .loading{text-align:center;padding:40px;color:#6b7280}
-  .logout-btn{padding:6px 14px;background:transparent;border:1px solid #374151;border-radius:7px;color:#6b7280;font-size:12px;width:auto;cursor:pointer}
-  .logout-btn:hover{border-color:#ef4444;color:#ef4444;background:transparent}
-  .updated{font-size:11px;color:#6b7280;margin-left:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#0d0f14;color:#e8eaf0;min-height:100vh;font-size:13px}
+.topbar{background:#14171f;border-bottom:1px solid #2a2f42;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.logo{font-size:16px;font-weight:800;background:linear-gradient(90deg,#00e5a0,#0099ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.updated{font-size:11px;color:#6b7280}
+.login-wrap{max-width:360px;margin:100px auto;background:#14171f;border:1px solid #2a2f42;border-radius:14px;padding:32px}
+.login-wrap h2{margin-bottom:20px;font-size:15px}
+input[type=password],input[type=text]{width:100%;padding:10px 14px;background:#1c2030;border:1px solid #2a2f42;border-radius:8px;color:#e8eaf0;font-size:13px;margin-bottom:12px;outline:none;font-family:inherit}
+input:focus{border-color:#00e5a0}
+.btn{padding:10px 18px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit}
+.btn-primary{background:#00e5a0;color:#000;width:100%}
+.btn-primary:hover{background:#00c98a}
+.btn-ghost{background:transparent;border:1px solid #374151;color:#6b7280}
+.btn-ghost:hover{border-color:#ef4444;color:#ef4444}
+.btn-sm{padding:6px 13px;font-size:12px}
+.err{color:#ff4d6d;font-size:12px;margin-bottom:10px}
+.main{padding:24px;max-width:1200px;margin:0 auto}
+
+/* Nav tabs */
+.nav-tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid #2a2f42;padding-bottom:0}
+.nav-tab{padding:9px 18px;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:none;cursor:pointer;font-size:13px;color:#6b7280;background:transparent;font-family:inherit;position:relative;bottom:-1px}
+.nav-tab.active{background:#14171f;border-color:#2a2f42;color:#e8eaf0;border-bottom-color:#14171f}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* Stat cards */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px}
+.stat{background:#14171f;border:1px solid #2a2f42;border-radius:12px;padding:18px 20px}
+.stat .lbl{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.stat .val{font-size:26px;font-weight:800}
+.g{color:#00e5a0}.b{color:#0099ff}.a{color:#f59e0b}.r{color:#ef4444}.p{color:#a78bfa}.w{color:#e8eaf0}
+
+/* Model breakdown */
+.model-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px}
+.model-card{background:#14171f;border:1px solid #2a2f42;border-radius:10px;padding:16px}
+.model-card .mname{font-size:11px;font-weight:700;color:#0099ff;margin-bottom:10px;text-transform:uppercase}
+.model-card .mrow{display:flex;justify-content:space-between;font-size:12px;color:#9ca3af;margin-bottom:4px}
+.model-card .mrow span:last-child{color:#e8eaf0;font-weight:600}
+
+/* Tables */
+.section-hd{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
+.tbl-wrap{background:#14171f;border:1px solid #2a2f42;border-radius:12px;overflow:hidden;margin-bottom:24px}
+table{width:100%;border-collapse:collapse}
+thead th{background:#1c2030;padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #2a2f42;white-space:nowrap}
+tbody tr{border-bottom:1px solid #1c2030;transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#1a1f2e}
+tbody td{padding:10px 14px;color:#c9cbd4;white-space:nowrap}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.badge-pro{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid #22c55e}
+.badge-free{background:rgba(107,114,128,.1);color:#6b7280;border:1px solid #374151}
+.bar-wrap{height:5px;background:#1c2030;border-radius:3px;width:80px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
+.bar-fill{height:100%;border-radius:3px;background:#00e5a0}
+.bar-fill.warn{background:#f59e0b}
+.bar-fill.danger{background:#ef4444}
+.search-row{display:flex;gap:10px;margin-bottom:14px;align-items:center}
+.search-row input{margin:0;max-width:260px}
+.muted{color:#6b7280}
+.cost-pos{color:#22c55e;font-weight:700}
+.loading{text-align:center;padding:60px;color:#6b7280}
 </style>
 </head>
 <body>
 
-<!-- Login screen -->
+<!-- LOGIN -->
 <div id="login-screen">
-  <div class="login-box">
+  <div class="login-wrap">
     <h2>🔐 Shayntech Admin</h2>
     <div class="err" id="login-err" style="display:none"></div>
-    <input type="password" id="secret-input" placeholder="Admin secret key" onkeydown="if(event.key==='Enter')doLogin()"/>
-    <button onclick="doLogin()">Sign In</button>
+    <input type="password" id="secret-input" placeholder="Admin secret key"
+           onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
   </div>
 </div>
 
-<!-- Dashboard -->
+<!-- DASHBOARD -->
 <div id="dashboard" style="display:none">
   <div class="topbar">
-    <h1>Shayntech Admin Dashboard</h1>
-    <div style="display:flex;align-items:center;gap:12px">
-      <span id="last-updated"></span>
-      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    <span class="logo">Shayntech Admin</span>
+    <div class="topbar-right">
+      <span class="updated" id="last-updated"></span>
+      <button class="btn btn-ghost btn-sm" onclick="loadData()">↻ Refresh</button>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
     </div>
   </div>
 
@@ -77,30 +95,64 @@
     <div id="loading" class="loading">Loading data...</div>
     <div id="content" style="display:none">
 
-      <!-- Stats row -->
-      <div class="stats-row" id="stats-row"></div>
-
-      <!-- Users table -->
-      <div class="section-title">All Users</div>
-      <div class="search-row">
-        <input type="text" id="search-input" placeholder="Search by email..." oninput="filterTable()"/>
-        <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+      <!-- Nav tabs -->
+      <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showTab('overview')">📊 Overview</button>
+        <button class="nav-tab" onclick="showTab('users')">👥 Users</button>
+        <button class="nav-tab" onclick="showTab('tokens')">🔢 Token Logs</button>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Email</th>
-              <th>Plan</th>
-              <th>Usage</th>
-              <th>Usage Bar</th>
-              <th>Subscription ID</th>
-              <th>Joined</th>
-            </tr>
-          </thead>
-          <tbody id="users-tbody"></tbody>
-        </table>
+
+      <!-- OVERVIEW TAB -->
+      <div class="tab-panel active" id="tab-overview">
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="section-hd">Cost by Model</div>
+        <div class="model-grid" id="model-grid"></div>
+        <div class="section-hd">Revenue vs Cost (this month estimate)</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+            <tbody id="revenue-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- USERS TAB -->
+      <div class="tab-panel" id="tab-users">
+        <div class="search-row">
+          <input type="text" id="search-input" placeholder="Search email..." oninput="filterUsers()"/>
+          <span class="muted" id="user-count"></span>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Email</th><th>Plan</th>
+                <th>API Calls</th><th>Usage</th>
+                <th>API Cost</th><th>Joined</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TOKEN LOGS TAB -->
+      <div class="tab-panel" id="tab-tokens">
+        <div class="search-row">
+          <input type="text" id="log-search" placeholder="Filter by model or user..." oninput="filterLogs()"/>
+          <span class="muted" id="log-count"></span>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th><th>Model</th><th>Input Tok</th>
+                <th>Output Tok</th><th>Cost (USD)</th><th>User ID</th>
+              </tr>
+            </thead>
+            <tbody id="logs-tbody"></tbody>
+          </table>
+        </div>
       </div>
 
     </div>
@@ -108,119 +160,158 @@
 </div>
 
 <script>
-var SECRET = '';
+var SECRET = '', allUsers = [], allLogs = [], statsData = {};
 var FREE_LIMIT = 50;
-var allUsers = [];
 
 function doLogin() {
-  var s = document.getElementById('secret-input').value.trim();
-  if (!s) return;
-  SECRET = s;
-  loadData();
+  SECRET = document.getElementById('secret-input').value.trim();
+  if (SECRET) loadData();
 }
-
 function doLogout() {
   SECRET = '';
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('login-screen').style.display = 'block';
-  document.getElementById('secret-input').value = '';
+}
+function showTab(name) {
+  document.querySelectorAll('.nav-tab').forEach((t,i) => {
+    var tabs = ['overview','users','tokens'];
+    t.className = 'nav-tab' + (tabs[i] === name ? ' active' : '');
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.className = 'tab-panel');
+  document.getElementById('tab-' + name).className = 'tab-panel active';
 }
 
 async function loadData() {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('content').style.display = 'none';
-  document.getElementById('login-err').style.display = 'none';
-
   try {
-    const [statsRes, usersRes] = await Promise.all([
-      fetch('/api/admin/stats', { headers: { 'x-admin-secret': SECRET } }),
-      fetch('/api/admin/users', { headers: { 'x-admin-secret': SECRET } })
+    var hdrs = { 'x-admin-secret': SECRET };
+    var [sRes, uRes, lRes] = await Promise.all([
+      fetch('/api/admin/stats',      { headers: hdrs }),
+      fetch('/api/admin/users',      { headers: hdrs }),
+      fetch('/api/admin/token-logs?limit=200', { headers: hdrs })
     ]);
-
-    if (statsRes.status === 401) {
+    if (sRes.status === 401) {
       document.getElementById('login-err').textContent = 'Invalid secret key.';
       document.getElementById('login-err').style.display = 'block';
       return;
     }
+    statsData = await sRes.json();
+    allUsers  = await uRes.json();
+    allLogs   = await lRes.json();
 
-    const stats = await statsRes.json();
-    const users = await usersRes.json();
-    allUsers = users;
-
-    // Show dashboard
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('dashboard').style.display = 'block';
-
-    renderStats(stats);
-    renderUsers(users);
-
+    renderOverview(statsData);
+    renderUsers(allUsers);
+    renderLogs(allLogs);
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
     document.getElementById('last-updated').textContent =
       'Updated ' + new Date().toLocaleTimeString();
-
   } catch(e) {
-    document.getElementById('login-err').textContent = 'Connection error: ' + e.message;
-    document.getElementById('login-err').style.display = 'block';
+    alert('Error: ' + e.message);
   }
 }
 
-function renderStats(s) {
-  var cards = [
-    { label:'Total Users',   value: s.total,      cls:''},
-    { label:'Pro Users',     value: s.pro,         cls:'blue'},
-    { label:'Free Users',    value: s.free,        cls:''},
-    { label:'Total API Calls', value: s.totalUsage, cls:'purple'},
-    { label:'Avg Usage/User', value: s.avgUsage,   cls:'amber'},
-    { label:'Near Limit (≥40)', value: s.heavyUsers, cls:'red'},
-  ];
-  document.getElementById('stats-row').innerHTML = cards.map(function(c) {
-    return '<div class="stat-card '+c.cls+'"><div class="label">'+c.label+'</div><div class="value">'+c.value+'</div></div>';
-  }).join('');
+function renderOverview(s) {
+  var t = s.tokens || {};
+  var costUsd  = parseFloat(t.totalCostUsd || 0);
+  var revenue  = s.pro * 8;
+  var profit   = revenue - costUsd;
+
+  document.getElementById('stats-grid').innerHTML = [
+    {lbl:'Total Users',    val:s.total,          cls:'w'},
+    {lbl:'Pro Users',      val:s.pro,            cls:'b'},
+    {lbl:'Free Users',     val:s.free,           cls:''},
+    {lbl:'Total API Calls',val:t.totalCalls||0,  cls:'p'},
+    {lbl:'Total Tokens In', val:fmt(t.totalInputTok||0), cls:'g'},
+    {lbl:'Total Tokens Out',val:fmt(t.totalOutputTok||0),cls:'a'},
+    {lbl:'Total API Cost', val:'$'+(costUsd.toFixed(4)), cls:'r'},
+    {lbl:'Near Limit ≥40', val:s.heavyUsers,     cls:'a'},
+  ].map(c=>'<div class="stat"><div class="lbl">'+c.lbl+'</div><div class="val '+c.cls+'">'+c.val+'</div></div>').join('');
+
+  // Model breakdown
+  var byModel = t.byModel || {};
+  var modelHtml = Object.entries(byModel).map(([model, m]) =>
+    '<div class="model-card">'
+    + '<div class="mname">'+model+'</div>'
+    + '<div class="mrow"><span>Calls</span><span>'+m.calls+'</span></div>'
+    + '<div class="mrow"><span>Input tok</span><span>'+fmt(m.input)+'</span></div>'
+    + '<div class="mrow"><span>Output tok</span><span>'+fmt(m.output)+'</span></div>'
+    + '<div class="mrow"><span>Cost</span><span style="color:#ef4444">$'+m.cost.toFixed(4)+'</span></div>'
+    + '</div>'
+  ).join('');
+  document.getElementById('model-grid').innerHTML = modelHtml || '<p class="muted">No token data yet.</p>';
+
+  document.getElementById('revenue-tbody').innerHTML = [
+    ['Monthly Revenue (Pro users)', '$' + revenue.toFixed(2), 'g'],
+    ['Total API Cost to Date',      '$' + costUsd.toFixed(4), 'r'],
+    ['Estimated Profit',            '$' + profit.toFixed(2),  profit>=0?'cost-pos':'r'],
+    ['Avg Cost per User (Pro)',      s.pro>0?'$'+(costUsd/s.pro).toFixed(4):'—', ''],
+    ['Avg Cost per API Call',        t.totalCalls>0?'$'+(costUsd/t.totalCalls).toFixed(5):'—', ''],
+  ].map(r=>'<tr><td>'+r[0]+'</td><td class="'+r[2]+'" style="font-weight:700">'+r[1]+'</td></tr>').join('');
 }
 
 function renderUsers(users) {
+  document.getElementById('user-count').textContent = users.length + ' users';
   var tbody = document.getElementById('users-tbody');
-  if (!users || users.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#6b7280;padding:30px">No users yet</td></tr>';
-    return;
-  }
-  tbody.innerHTML = users.map(function(u, i) {
-    var usage = u.lifetime_usage || 0;
-    var pct   = Math.min(100, Math.round((usage / FREE_LIMIT) * 100));
-    var barCls = pct >= 80 ? 'danger' : pct >= 60 ? 'warn' : '';
-    var badge  = u.is_pro
-      ? '<span class="badge pro">★ Pro</span>'
-      : '<span class="badge free">Free</span>';
-    var joined = u.created_at
-      ? new Date(u.created_at).toLocaleDateString()
-      : '—';
-    var subId = u.lemon_subscription_id
-      ? '<span style="font-size:11px;color:#6b7280">'+u.lemon_subscription_id.slice(0,16)+'…</span>'
-      : '—';
+  tbody.innerHTML = users.map((u,i) => {
+    var usage = u.lifetime_usage||0;
+    var pct   = Math.min(100, Math.round(usage/FREE_LIMIT*100));
+    var bc    = pct>=80?'danger':pct>=60?'warn':'';
+    var badge = u.is_pro?'<span class="badge badge-pro">★ Pro</span>'
+                        :'<span class="badge badge-free">Free</span>';
+    var cost  = parseFloat(u.total_cost_usd||0);
+    var margin= u.is_pro ? (8 - cost).toFixed(2) : '—';
     return '<tr data-email="'+(u.email||'').toLowerCase()+'">'
-      + '<td style="color:#6b7280">' + (i+1) + '</td>'
-      + '<td>' + (u.email || '—') + '</td>'
-      + '<td>' + badge + '</td>'
-      + '<td>' + usage + ' / ' + (u.is_pro ? '∞' : FREE_LIMIT) + '</td>'
-      + '<td><div class="usage-bar"><div class="usage-bar-fill '+barCls+'" style="width:'+pct+'%"></div></div></td>'
-      + '<td>' + subId + '</td>'
-      + '<td>' + joined + '</td>'
-      + '</tr>';
-  }).join('');
+      +'<td class="muted">'+(i+1)+'</td>'
+      +'<td>'+(u.email||'—')+'</td>'
+      +'<td>'+badge+'</td>'
+      +'<td>'+usage+'</td>'
+      +'<td><div class="bar-wrap"><div class="bar-fill '+bc+'" style="width:'+pct+'%"></div></div></td>'
+      +'<td style="color:#ef4444">$'+cost.toFixed(4)+'</td>'
+      +'<td class="muted">'+(u.created_at?new Date(u.created_at).toLocaleDateString():'—')+'</td>'
+      +'</tr>';
+  }).join('') || '<tr><td colspan="7" class="muted" style="text-align:center;padding:30px">No users yet</td></tr>';
 }
 
-function filterTable() {
+function renderLogs(logs) {
+  document.getElementById('log-count').textContent = logs.length + ' entries';
+  var tbody = document.getElementById('logs-tbody');
+  tbody.innerHTML = logs.map(l => {
+    var t = l.created_at ? new Date(l.created_at).toLocaleString() : '—';
+    var cost = parseFloat(l.cost_usd||0);
+    return '<tr data-filter="'+(l.model+' '+(l.user_id||'')).toLowerCase()+'">'
+      +'<td class="muted">'+t+'</td>'
+      +'<td style="color:#0099ff;font-weight:700">'+l.model+'</td>'
+      +'<td>'+fmt(l.input_tokens||0)+'</td>'
+      +'<td>'+fmt(l.output_tokens||0)+'</td>'
+      +'<td style="color:#ef4444">$'+cost.toFixed(5)+'</td>'
+      +'<td class="muted" style="font-size:10px">'+(l.user_id||'').slice(0,16)+'…</td>'
+      +'</tr>';
+  }).join('') || '<tr><td colspan="6" class="muted" style="text-align:center;padding:30px">No token logs yet. Logs appear after first API calls.</td></tr>';
+}
+
+function filterUsers() {
   var q = document.getElementById('search-input').value.toLowerCase();
-  var rows = document.querySelectorAll('#users-tbody tr');
-  rows.forEach(function(r) {
-    var email = r.getAttribute('data-email') || '';
-    r.style.display = email.includes(q) ? '' : 'none';
+  document.querySelectorAll('#users-tbody tr').forEach(r => {
+    r.style.display = (r.dataset.email||'').includes(q) ? '' : 'none';
   });
 }
+function filterLogs() {
+  var q = document.getElementById('log-search').value.toLowerCase();
+  document.querySelectorAll('#logs-tbody tr').forEach(r => {
+    r.style.display = (r.dataset.filter||'').includes(q) ? '' : 'none';
+  });
+}
+function fmt(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1)+'M';
+  if (n >= 1000)    return (n/1000).toFixed(1)+'K';
+  return n.toString();
+}
 
-// Auto-refresh every 60 seconds
-setInterval(function() { if (SECRET) loadData(); }, 60000);
+setInterval(() => { if (SECRET) loadData(); }, 60000);
 </script>
 </body>
 </html>

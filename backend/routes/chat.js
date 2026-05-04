@@ -1,67 +1,78 @@
 const express = require('express');
-const router = express.Router();
-const fetch = require('node-fetch');
+const router  = express.Router();
+const fetch   = require('node-fetch');
 const supabase = require('../lib/supabase');
 
 const FREE_LIMIT = parseInt(process.env.FREE_USES_LIMIT || '50');
 
-// ── Model routing config ──────────────────────────────────────────
-// qwen-turbo   → simple/fast tasks (formatting, basic formulas, sorting)
-// qwen-max     → complex tasks (VBA, pivot, analysis, dashboard, PDF extraction)
-// qwen-vl-max  → image files only (screenshots, photos → extract to Excel)
-const MODELS = {
-  simple:  process.env.QWEN_MODEL_SIMPLE  || 'qwen-turbo',
-  complex: process.env.QWEN_MODEL_COMPLEX || 'qwen-max',
-  vision:  process.env.QWEN_MODEL_VISION  || 'qwen-vl-max'
+// ── Model cost rates (per 1M tokens) ─────────────────────────────
+const MODEL_COSTS = {
+  'gemini-2.0-flash':        { input: 0.075,  output: 0.30  },
+  'gpt-4o-mini':             { input: 0.150,  output: 0.60  },
+  'gpt-4o':                  { input: 2.500,  output: 10.00 },
+  'gpt-4.1-mini':            { input: 0.400,  output: 1.60  },
+  'qwen-turbo':              { input: 0.050,  output: 0.20  },
+  'qwen-max':                { input: 0.400,  output: 1.20  },
 };
 
-const QWEN_BASE = process.env.QWEN_API_URL ||
-  'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
+// ── Model routing config ──────────────────────────────────────────
+const MODELS = {
+  simple:  process.env.MODEL_SIMPLE  || 'gpt-4o-mini',
+  complex: process.env.MODEL_COMPLEX || 'gpt-4o-mini',
+  vision:  process.env.MODEL_VISION  || 'gpt-4o-mini',
+  heavy:   process.env.MODEL_HEAVY   || 'gpt-4o',
+};
+
+// ── API endpoints ─────────────────────────────────────────────────
+const ENDPOINTS = {
+  openai:  'https://api.openai.com/v1/chat/completions',
+  gemini:  'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+  qwen:    process.env.QWEN_API_URL ||
+           'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
+};
+
+function getEndpointAndKey(model) {
+  if (model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('gpt-4')) {
+    return { url: ENDPOINTS.openai,  key: process.env.OPENAI_API_KEY };
+  }
+  if (model.startsWith('gemini')) {
+    return { url: ENDPOINTS.gemini,  key: process.env.GEMINI_API_KEY };
+  }
+  return { url: ENDPOINTS.qwen, key: process.env.QWEN_API_KEY };
+}
 
 const COMPLEX_KEYWORDS = [
   'vba','macro','pivot','vlookup','hlookup','index match',
-  'dashboard','analysis','forecast','regression','statistical',
-  'conditional format','nested','complex formula','automate',
-  'power query','advanced filter','solver','scenario',
+  'dashboard','forecast','regression','statistical',
+  'nested','automate','power query','advanced filter',
   'multiple sheets','across sheets','all sheets',
   'extract','pdf','resume','invoice','report'
 ];
 
 function routeModel(messages, hasAttachment, attachmentType) {
-  // Image files → vision model (needs to "see" the image)
-  if (hasAttachment && attachmentType === 'image') {
+  if (hasAttachment && (attachmentType === 'image' || attachmentType === 'pdf')) {
     return MODELS.vision;
   }
-
-  // PDF and other files → qwen-max (PDF.js already extracts text,
-  // qwen-vl-max doesn't support tool calling so can't write to Excel)
-  if (hasAttachment && attachmentType === 'pdf') {
-    return MODELS.complex;
-  }
-
-  // Check last user message for complexity keywords
   const lastUser = [...messages].reverse().find(m => m.role === 'user');
   if (lastUser) {
     const text = (typeof lastUser.content === 'string'
       ? lastUser.content : JSON.stringify(lastUser.content)).toLowerCase();
     if (COMPLEX_KEYWORDS.some(k => text.includes(k))) return MODELS.complex;
   }
-
   return MODELS.simple;
 }
 
-// ── Auth middleware ───────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────
 async function requireAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'Not authenticated. Please log in.' });
-  const token = authHeader.replace('Bearer ', '');
+  const token = (req.headers.authorization || '').replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Not authenticated.' });
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return res.status(401).json({ error: 'Session expired. Please log in again.' });
   req.user = user;
   next();
 }
 
-// ── Usage middleware ──────────────────────────────────────────────
+// ── Usage check ───────────────────────────────────────────────────
 async function checkUsage(req, res, next) {
   const { data: profile } = await supabase
     .from('profiles').select('lifetime_usage, is_pro').eq('id', req.user.id).single();
@@ -70,7 +81,7 @@ async function checkUsage(req, res, next) {
   if (!isPro && used >= FREE_LIMIT) {
     return res.status(402).json({
       error: 'free_limit_reached',
-      message: `You have used all ${FREE_LIMIT} free requests. Upgrade to Pro to continue.`,
+      message: `You've used all ${FREE_LIMIT} free requests. Upgrade to Pro.`,
       checkout_url: process.env.LEMONSQUEEZY_CHECKOUT_URL,
       used, limit: FREE_LIMIT
     });
@@ -79,50 +90,37 @@ async function checkUsage(req, res, next) {
   next();
 }
 
-// ── Call Qwen with fallback ───────────────────────────────────────
-async function callQwen(model, messages, tools, toolChoice) {
+// ── Call AI with retry ────────────────────────────────────────────
+async function callModel(model, messages, tools, toolChoice) {
+  const { url, key } = getEndpointAndKey(model);
+  if (!key) throw new Error(`API key not configured for model: ${model}`);
+
   const body = { model, messages, temperature: 0.1, max_tokens: 4096 };
   if (tools && tools.length > 0) { body.tools = tools; body.tool_choice = toolChoice || 'auto'; }
 
-  const res = await fetch(QWEN_BASE, {
+  const res  = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
   const data = await res.json();
 
-  // 400 on tool calling → retry without tools (some models don't support it)
+  // 400 on tools → retry without tools
   if (!res.ok && res.status === 400 && tools && tools.length > 0) {
     console.warn(`[${model}] tool call rejected (400), retrying without tools`);
     const body2 = { model, messages, temperature: 0.1, max_tokens: 4096 };
-    const retry = await fetch(QWEN_BASE, {
+    const retry = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(body2)
     });
     return { res: retry, data: await retry.json(), usedModel: model, toolsDropped: true };
   }
 
-  // Vision model failed → fallback to qwen-max with tools
-  if (!res.ok && model === MODELS.vision) {
-    console.warn(`[${model}] failed, falling back to qwen-max`);
-    const fallbackBody = { model: MODELS.complex, messages, temperature: 0.1, max_tokens: 4096 };
-    if (tools && tools.length > 0) { fallbackBody.tools = tools; fallbackBody.tool_choice = 'auto'; }
-    const retry = await fetch(QWEN_BASE, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(fallbackBody)
-    });
-    return { res: retry, data: await retry.json(), usedModel: MODELS.complex, toolsDropped: false };
+  // If chosen model fails → escalate to heavy model
+  if (!res.ok && model !== MODELS.heavy) {
+    console.warn(`[${model}] failed (${res.status}), escalating to ${MODELS.heavy}`);
+    return callModel(MODELS.heavy, messages, tools, toolChoice);
   }
 
   return { res, data, usedModel: model, toolsDropped: false };
@@ -138,19 +136,35 @@ router.post('/', requireAuth, checkUsage, async (req, res) => {
   console.log(`[routing] model=${model}  attachment=${attachment_type || 'none'}`);
 
   try {
-    const { res: qwenRes, data: qwenData, usedModel, toolsDropped } =
-      await callQwen(model, messages, tools, tool_choice);
+    const { res: aiRes, data: aiData, usedModel, toolsDropped } =
+      await callModel(model, messages, tools, tool_choice);
 
-    if (!qwenRes.ok) {
-      console.error(`[${usedModel}] error:`, qwenData);
-      return res.status(qwenRes.status).json({
-        error: qwenData.message || qwenData.error?.message || 'AI request failed.'
+    if (!aiRes.ok) {
+      console.error(`[${usedModel}] error:`, aiData);
+      return res.status(aiRes.status).json({
+        error: aiData.error?.message || aiData.message || 'AI request failed.'
       });
     }
 
-    normalizeToolCalls(qwenData);
-    await incrementUsage(req.user.id, req.profile.used);
-    res.json({ ...qwenData, _meta: { model: usedModel, tools_dropped: toolsDropped } });
+    normalizeToolCalls(aiData);
+
+    // ── Log tokens + cost ─────────────────────────────────────────
+    const usage        = aiData.usage || {};
+    const inputTok     = usage.prompt_tokens     || 0;
+    const outputTok    = usage.completion_tokens  || 0;
+    const rates        = MODEL_COSTS[usedModel]   || { input: 0, output: 0 };
+    const costUsd      = (inputTok / 1e6 * rates.input) + (outputTok / 1e6 * rates.output);
+
+    // Fire-and-forget (don't block response)
+    Promise.all([
+      incrementUsage(req.user.id, req.profile.used),
+      logTokens(req.user.id, usedModel, inputTok, outputTok, costUsd)
+    ]).catch(err => console.error('Usage update error:', err));
+
+    res.json({
+      ...aiData,
+      _meta: { model: usedModel, tools_dropped: toolsDropped, cost_usd: costUsd }
+    });
 
   } catch (err) {
     console.error('Chat route error:', err);
@@ -161,6 +175,13 @@ router.post('/', requireAuth, checkUsage, async (req, res) => {
 async function incrementUsage(userId, currentUsage) {
   await supabase.from('profiles')
     .update({ lifetime_usage: currentUsage + 1 }).eq('id', userId);
+}
+
+async function logTokens(userId, model, inputTok, outputTok, costUsd) {
+  await supabase.from('token_logs').insert({
+    user_id: userId, model, input_tokens: inputTok,
+    output_tokens: outputTok, cost_usd: costUsd
+  });
 }
 
 function normalizeToolCalls(data) {
