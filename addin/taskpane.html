@@ -3053,7 +3053,7 @@ const TOOL_DEFINITIONS = [
         properties: {
           sheet:  { type: 'string', description: 'Worksheet name' },
           range:  { type: 'string', description: 'Cell range e.g. A1 or A1:D10' },
-          values: { type: 'array', items: { type: 'array' }, description: '2D array of values. Each inner array is a row.' }
+          values: { type: 'array', items: { type: 'array', items: {} }, description: '2D array of values. Each inner array is a row.' }
         },
         required: ['sheet','range','values']
       }
@@ -3085,7 +3085,7 @@ const TOOL_DEFINITIONS = [
         properties: {
           sheet:    { type: 'string' },
           range:    { type: 'string', description: 'Cell range e.g. C2:C10' },
-          formulas: { type: 'array', items: { type: 'array' }, description: '2D array of formula strings' }
+          formulas: { type: 'array', items: { type: 'array', items: {} }, description: '2D array of formula strings' }
         },
         required: ['sheet','range','formulas']
       }
