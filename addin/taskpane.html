@@ -795,13 +795,15 @@
 
 /* ── PRO: Usage counter in toolbar ── */
 #usage-pill {
-  font-size: 10px; font-weight: 600; padding: 3px 8px;
-  border-radius: 20px; background: var(--surface); border: 1px solid var(--border);
-  color: var(--muted); cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  font-size: 11px; font-weight: 700; padding: 4px 10px;
+  border-radius: 20px; background: rgba(0,229,160,0.12); border: 1px solid var(--accent);
+  color: var(--accent); cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  transition: all 0.2s; letter-spacing: 0.02em;
 }
-#usage-pill.warning { border-color: #f59e0b; color: #f59e0b; }
-#usage-pill.danger  { border-color: #ef4444; color: #ef4444; }
-#usage-pill.pro     { border-color: #22c55e; color: #22c55e; }
+#usage-pill:hover { background: rgba(0,229,160,0.22); }
+#usage-pill.warning { background: rgba(245,158,11,0.12); border-color: #f59e0b; color: #f59e0b; }
+#usage-pill.danger  { background: rgba(239,68,68,0.12); border-color: #ef4444; color: #ef4444; animation: pulse 1.5s infinite; }
+#usage-pill.pro     { background: rgba(34,197,94,0.12); border-color: #22c55e; color: #22c55e; }
 
 /* ── PRO: Upgrade modal ── */
 #upgrade-modal {
@@ -837,6 +839,7 @@
     <span class="brand-name">Shayntech</span>
     <span class="brand-tag">AI Agent</span>
   </div>
+  <span id="usage-pill" onclick="showUpgradeModal()" title="Click to upgrade">50 free left</span>
   <div id="status-dot" class="status-dot"></div>
 </div>
 
@@ -896,7 +899,6 @@ Type a command below, or attach a file (PDF, CSV, XLSX) and tell me what to do w
         <button class="icon-btn" id="attach-btn" title="Attach file (PDF, CSV, XLSX)">📎</button>
       </div>
       <textarea id="user-input" placeholder="Ask the agent to do something in Excel..." rows="2"></textarea>
-      <span id="usage-pill" onclick="showUpgradeModal()" title="Click to upgrade">50 free left</span>
       <button class="icon-btn" id="undo-btn" title="Undo last write" style="border-color:var(--muted); color:var(--muted);" disabled onclick="applyUndo()">↩</button>
       <button class="icon-btn" id="stop-btn" title="Stop agent" style="display:none; border-color:var(--danger); color:var(--danger);">⏹</button>
       <button class="send-btn" id="send-btn" title="Send">▶</button>
@@ -2579,7 +2581,8 @@ async function callProBackend(messages, tools) {
   var data = await res.json();
   // Refresh usage pill after each call
   refreshUsagePill();
-  return data;
+  if (!data.choices || !data.choices[0]) throw new Error('No response from AI backend. Please try again.');
+  return normalizeMessage(data.choices[0].message);
 }
 
 async function callOpenRouter(messages, tools) {
