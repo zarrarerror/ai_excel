@@ -6,6 +6,9 @@ const supabase = require('../lib/supabase');
 const FREE_LIMIT = parseInt(process.env.FREE_USES_LIMIT || '50');
 
 // ── Model routing config ──────────────────────────────────────────
+// qwen-turbo   → simple/fast tasks (formatting, basic formulas, sorting)
+// qwen-max     → complex tasks (VBA, pivot, analysis, dashboard, PDF extraction)
+// qwen-vl-max  → image files only (screenshots, photos → extract to Excel)
 const MODELS = {
   simple:  process.env.QWEN_MODEL_SIMPLE  || 'qwen-turbo',
   complex: process.env.QWEN_MODEL_COMPLEX || 'qwen-max',
@@ -20,22 +23,34 @@ const COMPLEX_KEYWORDS = [
   'dashboard','analysis','forecast','regression','statistical',
   'conditional format','nested','complex formula','automate',
   'power query','advanced filter','solver','scenario',
-  'multiple sheets','across sheets','all sheets'
+  'multiple sheets','across sheets','all sheets',
+  'extract','pdf','resume','invoice','report'
 ];
 
 function routeModel(messages, hasAttachment, attachmentType) {
-  if (hasAttachment && (attachmentType === 'image' || attachmentType === 'pdf')) {
+  // Image files → vision model (needs to "see" the image)
+  if (hasAttachment && attachmentType === 'image') {
     return MODELS.vision;
   }
+
+  // PDF and other files → qwen-max (PDF.js already extracts text,
+  // qwen-vl-max doesn't support tool calling so can't write to Excel)
+  if (hasAttachment && attachmentType === 'pdf') {
+    return MODELS.complex;
+  }
+
+  // Check last user message for complexity keywords
   const lastUser = [...messages].reverse().find(m => m.role === 'user');
   if (lastUser) {
     const text = (typeof lastUser.content === 'string'
       ? lastUser.content : JSON.stringify(lastUser.content)).toLowerCase();
     if (COMPLEX_KEYWORDS.some(k => text.includes(k))) return MODELS.complex;
   }
+
   return MODELS.simple;
 }
 
+// ── Auth middleware ───────────────────────────────────────────────
 async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'Not authenticated. Please log in.' });
@@ -46,6 +61,7 @@ async function requireAuth(req, res, next) {
   next();
 }
 
+// ── Usage middleware ──────────────────────────────────────────────
 async function checkUsage(req, res, next) {
   const { data: profile } = await supabase
     .from('profiles').select('lifetime_usage, is_pro').eq('id', req.user.id).single();
@@ -63,30 +79,56 @@ async function checkUsage(req, res, next) {
   next();
 }
 
+// ── Call Qwen with fallback ───────────────────────────────────────
 async function callQwen(model, messages, tools, toolChoice) {
   const body = { model, messages, temperature: 0.1, max_tokens: 4096 };
   if (tools && tools.length > 0) { body.tools = tools; body.tool_choice = toolChoice || 'auto'; }
 
   const res = await fetch(QWEN_BASE, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${process.env.QWEN_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: {
+      'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(body)
   });
   const data = await res.json();
 
-  // 400 on tool calling → retry without tools
+  // 400 on tool calling → retry without tools (some models don't support it)
   if (!res.ok && res.status === 400 && tools && tools.length > 0) {
     console.warn(`[${model}] tool call rejected (400), retrying without tools`);
+    const body2 = { model, messages, temperature: 0.1, max_tokens: 4096 };
     const retry = await fetch(QWEN_BASE, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${process.env.QWEN_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages, temperature: 0.1, max_tokens: 4096 })
+      headers: {
+        'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body2)
     });
     return { res: retry, data: await retry.json(), usedModel: model, toolsDropped: true };
   }
+
+  // Vision model failed → fallback to qwen-max with tools
+  if (!res.ok && model === MODELS.vision) {
+    console.warn(`[${model}] failed, falling back to qwen-max`);
+    const fallbackBody = { model: MODELS.complex, messages, temperature: 0.1, max_tokens: 4096 };
+    if (tools && tools.length > 0) { fallbackBody.tools = tools; fallbackBody.tool_choice = 'auto'; }
+    const retry = await fetch(QWEN_BASE, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.QWEN_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(fallbackBody)
+    });
+    return { res: retry, data: await retry.json(), usedModel: MODELS.complex, toolsDropped: false };
+  }
+
   return { res, data, usedModel: model, toolsDropped: false };
 }
 
+// ── POST /api/chat ────────────────────────────────────────────────
 router.post('/', requireAuth, checkUsage, async (req, res) => {
   const { messages, tools, tool_choice, has_attachment, attachment_type } = req.body;
   if (!messages || !Array.isArray(messages))
@@ -117,7 +159,8 @@ router.post('/', requireAuth, checkUsage, async (req, res) => {
 });
 
 async function incrementUsage(userId, currentUsage) {
-  await supabase.from('profiles').update({ lifetime_usage: currentUsage + 1 }).eq('id', userId);
+  await supabase.from('profiles')
+    .update({ lifetime_usage: currentUsage + 1 }).eq('id', userId);
 }
 
 function normalizeToolCalls(data) {

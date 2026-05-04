@@ -3750,6 +3750,7 @@ R7. When adding a total/summary row: read_range first to find the EXACT last row
 RULES
 ═══════════════════════════════════════
 1. ALWAYS call task_complete when done with a clear summary.
+0. FILE EXTRACTION RULE (CRITICAL): When the user attaches a file (PDF, CSV, image) and asks to extract data into Excel — you MUST immediately use write_range to write the data into the target sheet. NEVER display the extracted data as a markdown table or list in your response. NEVER describe what you "will write" — just write it using tools. Go straight to get_sheet_names → read_range → write_range.
 2. Apply professional formatting automatically — do not wait to be asked.
 3. Use exact sheet names from the workbook snapshot below.
 4. write_range values must be 2D array: [["h1","h2"],["v1","v2"]]
