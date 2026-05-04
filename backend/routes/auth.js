@@ -1,20 +1,20 @@
-const express = require('express');
-const router = express.Router();
+const express  = require('express');
+const router   = express.Router();
 const supabase = require('../lib/supabase');
+
+const FREE_LIMIT = parseInt(process.env.FREE_USES_LIMIT || '50');
+const PRO_LIMIT  = parseInt(process.env.PRO_USES_LIMIT  || '1000');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
     return res.status(400).json({ error: 'Email and password are required.' });
-
   if (password.length < 6)
     return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
   const { data, error } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true  // auto-confirm so no email verification needed
+    email, password, email_confirm: true
   });
 
   if (error) {
@@ -23,27 +23,19 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: error.message });
   }
 
-  // Create profile row with 0 usage
   await supabase.from('profiles').upsert({
-    id: data.user.id,
-    email: data.user.email,
-    lifetime_usage: 0,
-    is_pro: false
+    id: data.user.id, email: data.user.email,
+    lifetime_usage: 0, monthly_usage: 0,
+    monthly_reset_at: new Date().toISOString(), is_pro: false
   });
 
-  // Sign them in immediately and return a token
-  const { data: session, error: signInError } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
+  const { data: session, error: signInError } =
+    await supabase.auth.signInWithPassword({ email, password });
 
   if (signInError)
     return res.status(500).json({ error: 'Account created but login failed. Please sign in.' });
 
-  res.json({
-    token: session.session.access_token,
-    user: { email: data.user.email, id: data.user.id }
-  });
+  res.json({ token: session.session.access_token, user: { email: data.user.email, id: data.user.id } });
 });
 
 // POST /api/auth/login
@@ -53,44 +45,53 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required.' });
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return res.status(401).json({ error: 'Invalid email or password.' });
 
-  if (error)
-    return res.status(401).json({ error: 'Invalid email or password.' });
-
-  res.json({
-    token: data.session.access_token,
-    user: { email: data.user.email, id: data.user.id }
-  });
+  res.json({ token: data.session.access_token, user: { email: data.user.email, id: data.user.id } });
 });
 
-// GET /api/auth/me — get current user's profile + usage
+// GET /api/auth/me
 router.get('/me', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'Not authenticated.' });
+  const token = (req.headers.authorization || '').replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Not authenticated.' });
 
-  const token = authHeader.replace('Bearer ', '');
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return res.status(401).json({ error: 'Invalid or expired session.' });
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+    .from('profiles').select('*').eq('id', user.id).single();
 
-  const freeLimit = parseInt(process.env.FREE_USES_LIMIT || '50');
-  const used = profile?.lifetime_usage || 0;
-  const isPro = profile?.is_pro || false;
+  const isPro        = profile?.is_pro       || false;
+  const lifetimeUsed = profile?.lifetime_usage || 0;
+  const resetAt      = profile?.monthly_reset_at ? new Date(profile.monthly_reset_at) : new Date();
+  const now          = new Date();
 
-  res.json({
-    email: user.email,
-    id: user.id,
-    is_pro: isPro,
-    lifetime_usage: used,
-    free_limit: freeLimit,
-    remaining: isPro ? null : Math.max(0, freeLimit - used),
-    checkout_url: process.env.LEMONSQUEEZY_CHECKOUT_URL
-  });
+  // Check if monthly needs reset
+  const needsReset = now.getFullYear() > resetAt.getFullYear() ||
+                     now.getMonth()    > resetAt.getMonth();
+  let monthlyUsed = needsReset ? 0 : (profile?.monthly_usage || 0);
+
+  // Next reset date = 1st of next month
+  const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  if (isPro) {
+    res.json({
+      email: user.email, id: user.id, is_pro: true,
+      monthly_usage: monthlyUsed,
+      monthly_limit: PRO_LIMIT,
+      remaining: Math.max(0, PRO_LIMIT - monthlyUsed),
+      resets_at: nextReset.toISOString(),
+      checkout_url: process.env.LEMONSQUEEZY_CHECKOUT_URL
+    });
+  } else {
+    res.json({
+      email: user.email, id: user.id, is_pro: false,
+      lifetime_usage: lifetimeUsed,
+      free_limit: FREE_LIMIT,
+      remaining: Math.max(0, FREE_LIMIT - lifetimeUsed),
+      checkout_url: process.env.LEMONSQUEEZY_CHECKOUT_URL
+    });
+  }
 });
 
 module.exports = router;

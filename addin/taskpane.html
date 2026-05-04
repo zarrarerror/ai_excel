@@ -4773,10 +4773,18 @@ async function refreshUsagePill() {
     var pill = document.getElementById('usage-pill');
     if (!pill) return;
     if (data.is_pro) {
-      pill.textContent = '★ Pro';
-      pill.className = 'pro';
+      var rem   = data.remaining     || 0;
+      var limit = data.monthly_limit || 1000;
+      var resetDate = data.resets_at
+        ? new Date(data.resets_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})
+        : 'next month';
+      pill.textContent = rem + ' / ' + limit + ' left';
+      pill.title = rem + ' requests remaining. Resets ' + resetDate;
       pill.style.cursor = 'default';
       pill.onclick = null;
+      if (rem <= 100)       pill.className = 'danger';
+      else if (rem <= 300)  pill.className = 'warning';
+      else                  pill.className = 'pro';
     } else {
       var remaining = data.remaining;
       pill.textContent = remaining + ' free left';
@@ -4902,15 +4910,4 @@ function isArabicValues(values) {
 </div>
 
 <!-- ── PRO: Upgrade modal ── -->
-<div id="upgrade-modal">
-  <div class="upgrade-card">
-    <h2>🚀 Upgrade to Pro</h2>
-    <p>You've used all 50 free requests.<br/>Upgrade to continue with unlimited access and premium Qwen AI.</p>
-    <div class="upgrade-price">$8.99 <span>/ month</span></div>
-    <a id="upgrade-checkout-link" href="#" target="_blank" class="upgrade-btn">Upgrade Now →</a>
-    <button class="upgrade-close" onclick="closeUpgradeModal()">Maybe later</button>
-  </div>
-</div>
-
-</body>
-</html>
+<div id="upgrad
