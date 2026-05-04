@@ -2564,7 +2564,21 @@ async function callProBackend(messages, tools) {
   var token = storage.getItem('pro_token');
   if (!token) throw new Error('Not logged in. Please log in to continue.');
 
-  var body = { messages: normalizeMessages(messages) };
+  // Detect attachment type for model routing
+  var attachedFile = document.getElementById('attached-file-name');
+  var attachedName = (attachedFile && attachedFile.textContent) ? attachedFile.textContent.toLowerCase() : '';
+  var attachType = '';
+  if (attachedName) {
+    if (attachedName.endsWith('.pdf')) attachType = 'pdf';
+    else if (attachedName.match(/\.(png|jpg|jpeg|gif|bmp|webp)$/)) attachType = 'image';
+    else attachType = 'file';
+  }
+
+  var body = {
+    messages: normalizeMessages(messages),
+    has_attachment: !!attachType,
+    attachment_type: attachType
+  };
   if (tools && tools.length > 0) {
     body.tools = tools;
     body.tool_choice = 'auto';
@@ -3719,6 +3733,18 @@ COLOR PALETTE (use consistently):
 • Negative highlight: #FFC7CE (pink/red)
 • Neutral: #FFFFCC (yellow)
 • Alternate row: #EBF3FB (very light blue)
+
+═══════════════════════════════════════
+CRITICAL: READ-FIRST RULES (follow ALWAYS, no exceptions)
+═══════════════════════════════════════
+BEFORE taking ANY write/modify/delete action, you MUST:
+R1. Call get_sheet_names to confirm all sheet names.
+R2. Call read_range on EVERY relevant sheet to understand the full structure — headers, data layout, occupied rows, column positions.
+R3. Only after you have read and understood the data, begin your actions.
+R4. NEVER assume column positions (A, B, C...) from the snapshot alone — ALWAYS verify with read_range before writing.
+R5. If unsure where data ends, call read_range with a wide range first (e.g. A1:Z100) to see the actual structure.
+R6. NEVER overwrite existing data unless the user explicitly asked to replace or modify it.
+R7. When adding a total/summary row: read_range first to find the EXACT last row with data, then write BELOW it — never guess the row number.
 
 ═══════════════════════════════════════
 RULES
