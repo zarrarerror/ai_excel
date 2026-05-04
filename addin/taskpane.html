@@ -3621,6 +3621,34 @@ const TOOL_DEFINITIONS = [
   }
 ];
 
+// ── Status bar (single updating action indicator) ────────────────
+var _statusBarEl = null;
+
+function updateStatusBar(text) {
+  if (!_statusBarEl || !_statusBarEl.isConnected) {
+    // Create a new status bar element
+    _statusBarEl = document.createElement('div');
+    _statusBarEl.className = 'msg tool-call';
+    _statusBarEl.innerHTML = '<div class="msg-bubble" id="status-bar-bubble">' + text + '</div>';
+    var msgs = document.getElementById('messages');
+    var typing = document.getElementById('typing-indicator');
+    msgs.insertBefore(_statusBarEl, typing);
+  } else {
+    // Update existing one in place
+    var bubble = _statusBarEl.querySelector('.msg-bubble');
+    if (bubble) bubble.textContent = text;
+  }
+  var msgs2 = document.getElementById('messages');
+  msgs2.scrollTop = msgs2.scrollHeight;
+}
+
+function clearStatusBar() {
+  if (_statusBarEl && _statusBarEl.isConnected) {
+    _statusBarEl.remove();
+  }
+  _statusBarEl = null;
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  AGENT LOOP
 // ═══════════════════════════════════════════════════════════════
@@ -3876,6 +3904,7 @@ ${workbookText}${fileContent ? `\n\nATTACHED FILE: ${fileName}\n${'─'.repeat(4
 
       if (toolName === 'task_complete') {
         const summary = toolArgs.summary || 'Task completed.';
+        clearStatusBar();
         addMessage('agent', '✅ Done!\n\n' + summary);
         taskDone = true;
         break;
@@ -3921,14 +3950,15 @@ ${workbookText}${fileContent ? `\n\nATTACHED FILE: ${fileName}\n${'─'.repeat(4
         task_complete:     '✅ Completing task...'
       };
       const _statusMsg = _friendlyMsg[toolName] || ('⚙️ ' + toolName.replace(/_/g,' ') + '...');
-      addMessage('tool-call', _statusMsg);
+      updateStatusBar(_statusMsg);
 
       let toolResult = '';
       try {
         toolResult = await executeTool(toolName, toolArgs);
       } catch(e) {
         toolResult = buildErrorHint(toolName, toolArgs, e.message);
-        addMessage('error', `Tool ${toolName} failed: ${e.message}`);
+        clearStatusBar();
+      addMessage('error', `Tool ${toolName} failed: ${e.message}`);
       }
 
       // Add tool result to conversation
